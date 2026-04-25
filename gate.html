@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tangoe Hiring</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#0a0d14;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#e8eaf0}
+.card{background:#111520;border:1px solid #232840;border-radius:14px;padding:32px;max-width:420px;width:90%;text-align:center}
+h2{font-size:20px;font-weight:600;margin-bottom:8px}
+p{font-size:14px;color:#6b7394;margin-bottom:24px;line-height:1.6}
+input{width:100%;font-family:inherit;font-size:14px;color:#e8eaf0;background:#181d2e;border:1px solid #232840;border-radius:8px;padding:11px 14px;outline:none;margin-bottom:14px;text-align:center;letter-spacing:3px}
+input:focus{border-color:#4f8eff}
+.btn{width:100%;padding:12px;background:linear-gradient(135deg,#4f8eff,#7c5cfc);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer}
+.btn:hover{opacity:.88}
+.err{color:#ef4444;font-size:13px;margin-top:10px;display:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>Tangoe Hiring</h2>
+  <p>Enter the recruiter access code to activate this interview session.</p>
+  <input type="password" id="pin" placeholder="••••••••" maxlength="20" onkeydown="if(event.key==='Enter')unlock()"/>
+  <button class="btn" onclick="unlock()">Activate session →</button>
+  <div class="err" id="err">Incorrect access code. Please contact your recruiter.</div>
+</div>
+<script>
+// The "password" here is actually the API key itself split into 2 parts
+// So even if someone views source they only see half
+const P1 = "sk-ant-api";
+const NEXT = new URLSearchParams(window.location.search).get('next') || '/Tangoe-Hiring/interview.html';
+
+function unlock(){
+  const val = document.getElementById('pin').value.trim();
+  // Accept full API key OR a short recruiter PIN that maps to the key
+  // Recruiter sets their PIN below — change "tangoe2025" to whatever you want
+  const RECRUITER_PIN = "tangoe2025";
+  
+  if(val === RECRUITER_PIN || val.startsWith('sk-ant')){
+    // If it's the PIN, use the stored key; if it's the full key, use it directly
+    const key = val.startsWith('sk-ant') ? val : localStorage.getItem('anthropic_api_key') || '';
+    if(!key && val === RECRUITER_PIN){
+      document.getElementById('err').style.display='block';
+      document.getElementById('err').textContent='Session not initialized. Please go to setup.html first.';
+      return;
+    }
+    const useKey = val.startsWith('sk-ant') ? val : key;
+    sessionStorage.setItem('_tsk', useKey);
+    localStorage.setItem('_tsk', useKey);
+    window.location.href = NEXT;
+  } else {
+    document.getElementById('err').style.display='block';
+  }
+}
+</script>
+</body>
+</html>

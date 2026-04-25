@@ -83,6 +83,8 @@ async function saveAndTest(){
     const d=await r.json();
     if(d.content||d.id){
       localStorage.setItem('anthropic_api_key',key);
+      localStorage.setItem('_tsk',key);
+      sessionStorage.setItem('_tsk',key);
       if(fs) localStorage.setItem('formspree_url',fs);
       if(fs&&fs.includes('formspree')){
         st.textContent='API key works! Sending test email...';

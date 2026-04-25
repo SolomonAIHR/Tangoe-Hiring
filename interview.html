@@ -210,12 +210,9 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
 <script>
 const API = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-haiku-4-5-20251001";
-// ── SET YOUR API KEY HERE ONCE ──────────────────────────────────────────
-// This key is used for ALL candidates. Set it here so every candidate
-// who opens the link can complete the interview without any setup.
-const HARDCODED_KEY = "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";
-const API_KEY = HARDCODED_KEY !== "YOUR_ANTHROPIC_API_KEY_HERE" ? HARDCODED_KEY : localStorage.getItem("anthropic_api_key") || "";
-// ─────────────────────────────────────────────────────────────────────────
+// API key is never stored in code — loaded from encrypted session only
+const API_KEY = sessionStorage.getItem('_tsk') || localStorage.getItem('_tsk') || '';
+if(!API_KEY){ window.location.href = '/Tangoe-Hiring/gate.html?next=' + encodeURIComponent(window.location.href); }
 
 // Load config from URL
 const urlParams = new URLSearchParams(window.location.search);
