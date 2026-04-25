@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tangoe · QA Engineer Interview</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4f6fb;--surface:#fff;--border:#e2e6f0;--accent:#0057ff;--accent2:#7c5cfc;
+  --green:#16a34a;--green-bg:#f0fdf4;--green-border:#86efac;
+  --amber:#d97706;--amber-bg:#fffbeb;--amber-border:#fcd34d;
+  --red:#dc2626;--red-bg:#fef2f2;--ink:#0f1117;--muted:#6b7280;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}
+.logo{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.proctor-badge{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid #fca5a5;border-radius:999px;padding:4px 12px;font-weight:500}
+.proctor-dot{width:7px;height:7px;border-radius:50%;background:var(--red);animation:blink 1.2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* STEPS */
+.steps{display:flex;justify-content:center;align-items:center;padding:24px;gap:0}
+.s-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.s-item.active{color:var(--accent);font-weight:500}
+.s-item.done{color:var(--green)}
+.s-dot{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.s-item.active .s-dot{border-color:var(--accent);background:var(--accent);color:#fff}
+.s-item.done .s-dot{border-color:var(--green);background:var(--green);color:#fff;font-size:14px}
+.s-line{width:36px;height:1px;background:var(--border);margin:0 6px}
+
+/* WRAP */
+.wrap{max-width:780px;margin:0 auto;padding:0 16px 40px}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.card-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px}
+.card-sub{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+
+/* CAMERA */
+.camera-wrap{position:relative;width:100%;max-width:340px;margin:0 auto 20px;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3}
+#cam-video{width:100%;height:100%;object-fit:cover;display:block}
+.cam-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;background:rgba(0,0,0,.7);color:#fff;font-size:14px;text-align:center;padding:20px}
+.cam-overlay svg{width:40px;height:40px;opacity:.6}
+#cam-status{position:absolute;top:10px;left:10px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;background:rgba(22,163,74,.9);color:#fff}
+#photo-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .1s}
+
+/* FLAGS */
+.flag-bar{display:none;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--amber);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+
+/* CHAT */
+.chat-area{display:flex;flex-direction:column;gap:10px;max-height:400px;overflow-y:auto;margin-bottom:14px;padding:2px;scroll-behavior:smooth}
+.msg{padding:12px 16px;border-radius:12px;font-size:14px;line-height:1.65;max-width:90%}
+.msg-ai{background:var(--bg);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:3px}
+.msg-me{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:3px}
+.msg-warn{background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber);align-self:stretch;font-size:12px;padding:8px 12px;border-radius:8px;max-width:100%}
+.chat-row{display:flex;gap:8px}
+.chat-row input{flex:1;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:11px 14px;outline:none;transition:border .15s}
+.chat-row input:focus{border-color:var(--accent);background:#fff}
+.q-bar{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+.q-dots{display:flex;gap:5px}
+.q-dot{width:7px;height:7px;border-radius:50%;background:var(--border);transition:background .3s}
+.q-dot.done{background:var(--accent)}
+.btn{padding:10px 22px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+.btn-blue{background:var(--accent);color:#fff}
+.btn-blue:hover{background:#0040cc}
+.btn-blue:disabled{opacity:.4;cursor:not-allowed}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* DONE */
+.done-wrap{text-align:center;padding:52px 24px}
+.done-icon{width:64px;height:64px;background:var(--green-bg);border:1.5px solid var(--green-border);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:26px}
+.done-wrap h2{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;margin-bottom:10px}
+.done-wrap p{color:var(--muted);font-size:15px;line-height:1.65;max-width:420px;margin:0 auto}
+
+/* FORMS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fl{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+label{font-size:12px;color:var(--muted);font-weight:500}
+input[type=text],input[type=email],select{width:100%;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 13px;outline:none;transition:all .15s}
+input:focus,select:focus{border-color:var(--accent);background:#fff}
+.rules-list{list-style:none;padding:0;display:flex;flex-direction:column;gap:8px}
+.rules-list li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--muted);line-height:1.5}
+.rules-list li span:first-child{font-size:16px;flex-shrink:0}
+@media(max-width:560px){.g2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="logo"><div class="logo-dot"></div>Tangoe Hiring</div>
+  <div class="proctor-badge"><div class="proctor-dot"></div>Proctored interview</div>
+</nav>
+
+<div class="steps">
+  <div class="s-item active" id="si-1"><div class="s-dot" id="sd-1">1</div>Details</div>
+  <div class="s-line"></div>
+  <div class="s-item" id="si-2"><div class="s-dot" id="sd-2">2</div>Camera check</div>
+  <div class="s-line"></div>
+  <div class="s-item" id="si-3"><div class="s-dot" id="sd-3">3</div>Interview</div>
+  <div class="s-line"></div>
+  <div class="s-item" id="si-4"><div class="s-dot" id="sd-4">4</div>Done</div>
+</div>
+
+<div class="wrap">
+
+  <!-- STEP 1: Details -->
+  <div id="s1">
+    <div class="card">
+      <div class="card-title" id="s1-title">QA Engineer · Tangoe</div>
+      <div class="card-sub">Complete this proctored AI screening interview. It takes 12–15 minutes. Answer from your own experience — not from notes or other tools.</div>
+      <div class="g2">
+        <div class="fl"><label>Full name *</label><input type="text" id="c-name" placeholder="Your full name"/></div>
+        <div class="fl"><label>Email address *</label><input type="email" id="c-email" placeholder="your@email.com"/></div>
+      </div>
+      <div class="g2">
+        <div class="fl"><label>Years of QA experience</label>
+          <select id="c-yoe">
+            <option>Less than 1 year</option><option>1–2 years</option>
+            <option>3–5 years</option><option>6–10 years</option><option>10+ years</option>
+          </select>
+        </div>
+        <div class="fl"><label>Primary automation tool</label>
+          <select id="c-tool">
+            <option>Selenium</option><option>Cypress</option><option>Playwright</option>
+            <option>Appium</option><option>Manual testing only</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <ul class="rules-list" style="margin-bottom:20px">
+        <li><span>📷</span><span>Your webcam will be enabled throughout the interview for proctoring purposes.</span></li>
+        <li><span>🚫</span><span>Do not use AI tools, notes, or any other assistance. Answers are monitored for authenticity.</span></li>
+        <li><span>⏱</span><span>Answer each question yourself. Copied or pasted answers will be flagged automatically.</span></li>
+        <li><span>🔇</span><span>Find a quiet space. Tab switching will be detected and reported.</span></li>
+      </ul>
+      <button class="btn btn-blue" onclick="goCamera()">Continue to camera check →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: Camera -->
+  <div id="s2" style="display:none">
+    <div class="card">
+      <div class="card-title">Camera & proctoring check</div>
+      <div class="card-sub">We need access to your webcam. Your video is NOT recorded or shared — only periodic still photos are captured for verification.</div>
+      <div class="camera-wrap">
+        <video id="cam-video" autoplay muted playsinline></video>
+        <div class="cam-overlay" id="cam-overlay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.069A1 1 0 0121 8.876V15.12a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+          <span>Click below to enable camera</span>
+        </div>
+        <div id="cam-status" style="display:none">● LIVE</div>
+        <div id="photo-flash"></div>
+      </div>
+      <div style="text-align:center;margin-bottom:16px">
+        <button class="btn btn-blue" id="cam-btn" onclick="startCamera()">Enable camera →</button>
+      </div>
+      <div id="cam-ready" style="display:none;text-align:center">
+        <div style="background:var(--green-bg);border:1px solid var(--green-border);border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:var(--green)">
+          ✓ Camera active — you're all set
+        </div>
+        <button class="btn btn-blue" onclick="startInterview()">Begin interview →</button>
+      </div>
+      <div id="cam-skip" style="text-align:center;margin-top:12px;display:none">
+        <button onclick="startInterview(true)" style="background:none;border:none;font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline">Skip camera (not recommended)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Interview -->
+  <div id="s3" style="display:none">
+    <div id="cheat-banner" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:10px;padding:10px 16px;font-size:13px;color:var(--amber);margin-bottom:12px;display:flex;align-items:center;gap:8px"></div>
+    <div class="card">
+      <div class="card-title" id="int-label">QA Engineer Interview · Tangoe</div>
+      <div style="display:flex;gap:12px;margin-bottom:16px">
+        <div class="camera-wrap" style="width:140px;max-width:140px;flex-shrink:0;aspect-ratio:4/3;border-radius:8px">
+          <video id="cam-video2" autoplay muted playsinline style="width:100%;height:100%;object-fit:cover;border-radius:8px"></video>
+          <div id="cam-status2" style="position:absolute;top:6px;left:6px;font-size:10px;font-weight:600;padding:3px 8px;border-radius:999px;background:rgba(22,163,74,.9);color:#fff;display:none">● REC</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column">
+          <div class="chat-area" id="chat-area"></div>
+        </div>
+      </div>
+      <div class="chat-row">
+        <input type="text" id="ans" placeholder="Type your answer and press Enter…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAns()}"/>
+        <button class="btn btn-blue" id="send-btn" onclick="sendAns()">Send →</button>
+      </div>
+      <div class="q-bar" style="margin-top:10px">
+        <span style="font-size:12px;color:var(--muted)" id="q-label">Question 1</span>
+        <div class="q-dots" id="q-dots"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4: Done -->
+  <div id="s4" style="display:none">
+    <div class="done-wrap">
+      <div class="done-icon">✓</div>
+      <h2>Interview complete!</h2>
+      <p>Your responses have been submitted to the Tangoe hiring team. You'll hear back within 2–3 business days at <strong id="done-email"></strong>.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = "https://api.anthropic.com/v1/messages";
+const MODEL = "claude-haiku-4-5-20251001";
+// API key embedded — candidates go straight to interview, no setup needed
+const API_KEY = localStorage.getItem('anthropic_api_key') || '';
+
+// Load config from URL
+const urlParams = new URLSearchParams(window.location.search);
+const cfgId = urlParams.get('cfg');
+let config = {};
+if(cfgId){
+  try{ config = JSON.parse(localStorage.getItem('config_'+cfgId)||'{}'); }catch(e){}
+}
+const TOTAL_Q = parseInt(config.questions)||6;
+const ROLE = config.role||'QA Engineer';
+const JD = config.jd||'';
+const PHOTO_INTERVAL = (parseInt(config.photoInterval)||60)*1000;
+
+// State
+let chat=[], tx=[], qCount=0, cur={};
+let stream=null, photoTimer=null, photos=[];
+let typingLog=[], answerStartTime=0, lastKeyTime=0, pasteDetected=false, totalKeystrokes=0;
+let tabSwitchCount=0, faceAwayCount=0;
+
+// Update role in UI
+document.getElementById('s1-title').textContent = ROLE+' · Tangoe';
+
+// Tab switch detection
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden && qCount>0){
+    tabSwitchCount++;
+    addBubble(`⚠️ Tab switch detected (${tabSwitchCount}x). Please stay on this page during your interview.`, 'warn');
+  }
+});
+
+function setStep(n){
+  [1,2,3,4].forEach(i=>{
+    const si=document.getElementById('si-'+i);
+    const sd=document.getElementById('sd-'+i);
+    si.classList.remove('active','done');
+    if(i<n){si.classList.add('done');sd.textContent='✓';}
+    else if(i===n){si.classList.add('active');sd.textContent=i;}
+    else{sd.textContent=i;}
+    document.getElementById('s'+i).style.display=i===n?'block':'none';
+  });
+}
+
+function goCamera(){
+  const name=document.getElementById('c-name').value.trim();
+  const email=document.getElementById('c-email').value.trim();
+  if(!name||!email){alert('Please enter your name and email.');return;}
+  cur={name,email,yoe:document.getElementById('c-yoe').value,tool:document.getElementById('c-tool').value,start:new Date().toISOString()};
+  setStep(2);
+  // Show skip after 5s
+  setTimeout(()=>document.getElementById('cam-skip').style.display='block',5000);
+}
+
+async function startCamera(){
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+    document.getElementById('cam-video').srcObject = stream;
+    document.getElementById('cam-overlay').style.display='none';
+    document.getElementById('cam-status').style.display='block';
+    document.getElementById('cam-btn').style.display='none';
+    document.getElementById('cam-ready').style.display='block';
+  }catch(e){
+    alert('Camera access denied. You can skip camera, but this will be noted in your report.');
+    document.getElementById('cam-skip').style.display='block';
+  }
+}
+
+async function startInterview(skipped){
+  if(skipped) cur.cameraSkipped = true;
+  setStep(3);
+
+  // Mirror stream to interview camera
+  if(stream){
+    document.getElementById('cam-video2').srcObject = stream;
+    document.getElementById('cam-status2').style.display='block';
+    startPhotoCapture();
+  }
+
+  // Build question dots
+  const dots = document.getElementById('q-dots');
+  dots.innerHTML = Array(TOTAL_Q).fill('<div class="q-dot"></div>').join('');
+
+  // Init typing tracker
+  initTypingTracker();
+
+  // Start interview
+  const initMsg = `Candidate: ${cur.name} | Role: ${ROLE} | Experience: ${cur.yoe} | Primary tool: ${cur.tool}`;
+  chat.push({role:'user',content:initMsg});
+  const reply = await callClaude();
+  chat.push({role:'assistant',content:reply});
+  tx.push({q:reply,a:null});
+  addBubble(reply,false);
+  setQLabel(1);
+}
+
+function buildSystem(cheatCtx){
+  const cheatNote = cheatCtx ? `\nANTI-CHEAT SIGNAL: ${cheatCtx}. Ask a razor-specific follow-up requiring lived memory.` : '';
+  return `You are conducting an initial recruiter screening interview for a ${ROLE} position at Tangoe.
+
+JOB DESCRIPTION:
+${JD||'Senior QA Engineer role at Tangoe — technology expense management SaaS company. Must have automation experience, Agile methodology knowledge, and strong communication skills.'}
+
+Your goal: assess if candidate meets JD requirements through natural conversation.
+
+Rules:
+1. Ask ONE question at a time — never multiple
+2. Base questions directly on JD requirements — don't ask generic questions
+3. Probe for: specific tools used, real project examples, actual metrics/outcomes, ownership signals
+4. If answer is vague: "Can you give me a specific example from your recent work?"
+5. Vary across: technical skills (automation, tools), process knowledge (Agile, SDLC), past impact, problem solving
+6. After exactly ${TOTAL_Q} candidate answers, output ONLY:
+Line 1: DONE
+Line 2: valid JSON no markdown:
+{"verdict":"Strong Yes","score":8,"strengths":["meets JD requirement X","Y"],"concerns":["gap in Z"],"jdMatch":85,"summary":"2 sentence summary against JD requirements."}
+${cheatNote}
+Verdict: Strong Yes(9-10)/Yes(7-8)/Maybe(5-6)/No(1-4). Be conversational but precise.`;
+}
+
+async function sendAns(){
+  const inp=document.getElementById('ans');
+  const a=inp.value.trim();
+  if(!a)return;
+
+  const typing=getTypingSignals(a);
+  const content=analyzeContent(a);
+  const flags=[];
+  if(typing.likelyPasted) flags.push('answer pasted');
+  if(typing.suspiciouslyFast) flags.push(`speed: ${typing.wpm}wpm`);
+  if(content.aiScore>=4) flags.push(`AI phrasing score: ${content.aiScore}/10`);
+  if(tabSwitchCount>0) flags.push(`tab switches: ${tabSwitchCount}`);
+
+  if(flags.length){
+    const b=document.getElementById('cheat-banner');
+    b.style.display='flex';
+    b.innerHTML=`⚠️ <strong>Authenticity flag:</strong> ${flags.join(' · ')} — follow-up questions will probe deeper.`;
+  }
+
+  inp.value='';
+  addBubble(a,true);
+  if(tx.length>0&&tx[tx.length-1].a===null){
+    tx[tx.length-1].a=a;
+    tx[tx.length-1].flags=flags;
+    tx[tx.length-1].typingSignals=typing;
+  }
+  qCount++;
+  updateDots(qCount);
+  setQLabel(qCount+1);
+  chat.push({role:'user',content:a});
+  resetTypingTracker();
+
+  const btn=document.getElementById('send-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  const think=document.createElement('div');
+  think.className='msg msg-ai';
+  think.innerHTML='<span class="spin" style="border-top-color:#999"></span>';
+  document.getElementById('chat-area').appendChild(think);
+  scrollChat();
+
+  const cheatCtx = flags.length ? flags.join(', ') : null;
+  const reply=await callClaude(cheatCtx);
+  chat.push({role:'assistant',content:reply});
+  think.remove();
+  btn.disabled=false;btn.textContent='Send →';
+
+  if(reply.trimStart().startsWith('DONE')){
+    await finish(reply);
+  } else {
+    tx.push({q:reply,a:null});
+    addBubble(reply,false);
+  }
+}
+
+async function callClaude(cheatCtx){
+  try{
+    const r=await fetch(API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:MODEL,max_tokens:600,system:buildSystem(cheatCtx),messages:chat})
+    });
+    const d=await r.json();
+    if(d.error) return '❌ '+d.error.message;
+    return d.content?.[0]?.text||'No response.';
+  }catch(e){return '❌ Error: '+e.message;}
+}
+
+async function finish(reply){
+  stopPhotoCapture();
+  let assessment={};
+  try{const jm=reply.match(/\{[\s\S]*\}/);if(jm)assessment=JSON.parse(jm[0]);}catch(e){}
+
+  // Compile all flags
+  const allFlags=tx.filter(t=>t.flags?.length).map((t,i)=>`Q${i+1}: ${t.flags.join(', ')}`);
+  assessment.authenticityFlags=allFlags;
+  assessment.authenticityScore=Math.max(0,10-allFlags.length*2);
+  assessment.tabSwitches=tabSwitchCount;
+  assessment.photoCount=photos.length;
+  assessment.cameraSkipped=!!cur.cameraSkipped;
+
+  const result={
+    candidate:cur, assessment,
+    transcript:tx, photos,
+    configId:cfgId,
+    completedAt:new Date().toISOString()
+  };
+
+  const existing=JSON.parse(localStorage.getItem('tangoe_candidates')||'[]');
+  existing.unshift({...result,id:Date.now()});
+  localStorage.setItem('tangoe_candidates',JSON.stringify(existing));
+
+  // Send email notification via Formspree
+  const FORMSPREE = localStorage.getItem('formspree_url') || '';
+  if(FORMSPREE){
+    const flags = assessment.authenticityFlags||[];
+    const emailBody = {
+      _replyto: cur.email,
+      _subject: `Tangoe Interview Complete: ${cur.name} — ${ROLE} (${assessment.verdict||'Pending'} ${assessment.score||0}/10)`,
+      candidate_name: cur.name,
+      candidate_email: cur.email,
+      role: ROLE,
+      experience: cur.yoe,
+      primary_tool: cur.tool,
+      verdict: assessment.verdict||'Pending',
+      score: (assessment.score||0)+'/10',
+      jd_match: (assessment.jdMatch||0)+'%',
+      summary: assessment.summary||'',
+      strengths: (assessment.strengths||[]).join(' | '),
+      concerns: (assessment.concerns||[]).join(' | '),
+      authenticity_score: (assessment.authenticityScore||10)+'/10',
+      authenticity_flags: flags.length ? flags.join(' | ') : 'None',
+      tab_switches: assessment.tabSwitches||0,
+      camera_skipped: assessment.cameraSkipped?'Yes':'No',
+      photos_captured: photos.length,
+      transcript: tx.map((t,i)=>`Q${i+1}: ${t.q||''}
+Answer: ${t.a||'(no answer)'}`).join('
+
+---
+
+'),
+      completed_at: new Date().toLocaleString()
+    };
+    fetch(FORMSPREE,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(emailBody)})
+      .catch(e=>console.warn('Email notification failed:',e));
+  }
+
+  document.getElementById('done-email').textContent=cur.email;
+  setStep(4);
+}
+
+// ── CAMERA / PHOTO CAPTURE ───────────────────────────────────────────────
+function startPhotoCapture(){
+  photoTimer=setInterval(()=>{
+    const video=document.getElementById('cam-video2');
+    if(!video.srcObject)return;
+    const canvas=document.createElement('canvas');
+    canvas.width=320;canvas.height=240;
+    canvas.getContext('2d').drawImage(video,0,0,320,240);
+    photos.push({dataUrl:canvas.toDataURL('image/jpeg',0.6),time:new Date().toISOString()});
+    // Flash effect
+    const flash=document.getElementById('photo-flash');
+    if(flash){flash.style.opacity='0.4';setTimeout(()=>flash.style.opacity='0',150);}
+  },PHOTO_INTERVAL);
+}
+function stopPhotoCapture(){
+  if(photoTimer){clearInterval(photoTimer);photoTimer=null;}
+  if(stream){stream.getTracks().forEach(t=>t.stop());}
+}
+
+// ── ANTI-CHEAT ───────────────────────────────────────────────────────────
+function initTypingTracker(){
+  const inp=document.getElementById('ans');
+  resetTypingTracker();
+  inp.addEventListener('paste',()=>{pasteDetected=true;});
+  inp.addEventListener('keydown',(e)=>{
+    if(e.key.length===1){totalKeystrokes++;const now=Date.now();lastKeyTime=now;}
+  });
+}
+function resetTypingTracker(){
+  answerStartTime=Date.now();pasteDetected=false;totalKeystrokes=0;lastKeyTime=0;
+}
+function getTypingSignals(text){
+  const words=text.trim().split(/\s+/).length;
+  const time=Date.now()-answerStartTime;
+  const wpm=Math.round(words/(time/60000));
+  const pasteRatio=text.length>0?(text.length-totalKeystrokes)/text.length:0;
+  return{
+    words,wpm,pasteRatio:Math.round(pasteRatio*100),
+    likelyPasted:pasteDetected||pasteRatio>0.7||(words>30&&totalKeystrokes<15),
+    suspiciouslyFast:wpm>180&&words>15,totalKeystrokes
+  };
+}
+function analyzeContent(text){
+  const aiPhrases=['leveraged','utilized','in order to','furthermore','additionally','implemented a solution','ensured that','as a result','streamlined','with respect to'];
+  const lower=text.toLowerCase();
+  const hits=aiPhrases.filter(p=>lower.includes(p)).length;
+  const pronouns=(text.match(/\b(I|my|we|our|me)\b/gi)||[]).length;
+  const words=text.trim().split(/\s+/).length;
+  const aiScore=Math.min(10,hits*2+(pronouns/words<0.03?3:0)+(!(/\d/.test(text))?2:0));
+  return{aiScore,hits,pronounRatio:Math.round(pronouns/words*100)/100};
+}
+
+function addBubble(t,type){
+  const el=document.createElement('div');
+  el.className=type===true?'msg msg-me':type==='warn'?'msg msg-warn':'msg msg-ai';
+  el.textContent=t.replace(/^DONE\s*/,'').trim();
+  document.getElementById('chat-area').appendChild(el);
+  scrollChat();
+}
+function scrollChat(){const c=document.getElementById('chat-area');c.scrollTop=c.scrollHeight;}
+function setQLabel(n){document.getElementById('q-label').textContent=n>TOTAL_Q?'Wrapping up…':`Question ${Math.min(n,TOTAL_Q)} of ${TOTAL_Q}`;}
+function updateDots(n){document.querySelectorAll('.q-dot').forEach((d,i)=>d.classList.toggle('done',i<n));}
+</script>
+</body>
+</html>

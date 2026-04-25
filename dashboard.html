@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tangoe · Recruiter Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0d14;--surface:#111520;--surface2:#181d2e;--border:#232840;
+  --accent:#4f8eff;--green:#22c97a;--amber:#f59e0b;--red:#ef4444;
+  --text:#e8eaf0;--muted:#6b7394;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);background:var(--surface)}
+.logo{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;display:flex;align-items:center;gap:8px}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.nav-right{display:flex;gap:8px;align-items:center}
+.btn{padding:8px 18px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;text-decoration:none;display:inline-flex;align-items:center}
+.btn-blue{background:var(--accent);color:#fff}
+.btn-blue:hover{opacity:.85}
+.btn-out{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-out:hover{border-color:var(--accent);color:var(--accent)}
+.wrap{padding:28px}
+.top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px}
+.top h1{font-family:'Syne',sans-serif;font-size:22px;font-weight:700}
+.top p{font-size:13px;color:var(--muted);margin-top:3px}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.stat.hl{border-left:2px solid var(--accent)}
+.stat-n{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;margin-bottom:2px}
+.stat-l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.tbl{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.tbl-head{display:grid;grid-template-columns:2fr 1fr .8fr .8fr .8fr .8fr 60px;padding:11px 20px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.tbl-row{display:grid;grid-template-columns:2fr 1fr .8fr .8fr .8fr .8fr 60px;padding:14px 20px;border-bottom:1px solid var(--border);align-items:center;cursor:pointer;transition:background .1s}
+.tbl-row:last-child{border-bottom:none}
+.tbl-row:hover{background:var(--surface2)}
+.avatar{width:32px;height:32px;border-radius:50%;background:rgba(79,142,255,.15);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+.name-cell{display:flex;align-items:center;gap:10px}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600}
+.bg{background:rgba(34,201,122,.12);color:var(--green);border:1px solid rgba(34,201,122,.2)}
+.ba{background:rgba(245,158,11,.12);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+.br{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.bx{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.score-ring{width:34px;height:34px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+.empty{padding:60px;text-align:center;color:var(--muted)}
+.empty h3{font-family:'Syne',sans-serif;font-size:16px;color:var(--text);margin-bottom:6px}
+
+/* MODAL */
+.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px;backdrop-filter:blur(4px)}
+.mbg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:680px;margin:auto}
+.modal h3{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:4px}
+.m-meta{font-size:13px;color:var(--muted);margin-bottom:20px}
+.m-close{float:right;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif}
+.m-close:hover{border-color:var(--accent);color:var(--accent)}
+.verdict-strip{display:flex;align-items:center;gap:16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:20px}
+.v-score{font-family:'Syne',sans-serif;font-size:24px;font-weight:700}
+.v-lbl{font-size:12px;color:var(--muted)}
+.v-div{width:1px;height:36px;background:var(--border)}
+.m-sec{margin-bottom:18px}
+.m-sec-title{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.m-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:13px;line-height:1.75;white-space:pre-wrap;color:var(--text)}
+.photos-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.photo-thumb{border-radius:6px;overflow:hidden;aspect-ratio:4/3;background:var(--surface2);border:1px solid var(--border)}
+.photo-thumb img{width:100%;height:100%;object-fit:cover}
+.photo-thumb .no-photo{display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--muted)}
+.flag-item{display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)}
+.flag-item:last-child{border:none}
+.flag-icon{font-size:16px}
+.flag-clean{color:var(--green)}
+.flag-warn{color:var(--amber)}
+.m-actions{display:flex;gap:8px;margin-top:8px}
+.jd-match-bar{height:6px;border-radius:999px;background:var(--surface2);overflow:hidden;margin-top:6px}
+.jd-match-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--green))}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="logo"><div class="logo-dot"></div>Tangoe <span style="font-weight:400;color:var(--muted);margin-left:2px">Hiring</span></div>
+  <div class="nav-right">
+    <span style="font-size:12px;color:var(--muted)">Recruiter Dashboard</span>
+    <a href="admin.html" class="btn btn-blue">+ New interview link</a>
+    <button class="btn btn-out" onclick="if(confirm('Clear all data?')){localStorage.removeItem('tangoe_candidates');location.reload()}">Clear</button>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>QA Engineer Candidates</h1>
+      <p>Tangoe · AI-screened with camera proctoring · Results update in real time</p>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat hl"><div class="stat-n" id="st-total">0</div><div class="stat-l">Total screened</div></div>
+    <div class="stat"><div class="stat-n" id="st-strong" style="color:var(--green)">0</div><div class="stat-l">Strong yes / Yes</div></div>
+    <div class="stat"><div class="stat-n" id="st-avg">—</div><div class="stat-l">Avg score /10</div></div>
+    <div class="stat"><div class="stat-n" id="st-flags" style="color:var(--amber)">0</div><div class="stat-l">Flagged candidates</div></div>
+    <div class="stat"><div class="stat-n" id="st-today">0</div><div class="stat-l">Completed today</div></div>
+  </div>
+
+  <div class="tbl">
+    <div class="tbl-head">
+      <div>Candidate</div><div>Experience</div><div>Score</div><div>JD match</div><div>Verdict</div><div>Authenticity</div><div></div>
+    </div>
+    <div id="clist"></div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="mbg" id="mbg" onclick="if(event.target===this)closeMod()">
+<div class="modal">
+  <button class="m-close" onclick="closeMod()">✕ Close</button>
+  <h3 id="m-name"></h3>
+  <div class="m-meta" id="m-meta"></div>
+
+  <div class="verdict-strip">
+    <div><div class="v-score" id="m-score"></div><div class="v-lbl">Score /10</div></div>
+    <div class="v-div"></div>
+    <div><span class="badge" id="m-badge"></span></div>
+    <div class="v-div"></div>
+    <div style="flex:1">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px">
+        <span>JD match</span><span id="m-jd-pct"></span>
+      </div>
+      <div class="jd-match-bar"><div class="jd-match-fill" id="m-jd-bar"></div></div>
+    </div>
+  </div>
+
+  <div class="m-sec">
+    <div class="m-sec-title">AI assessment</div>
+    <div class="m-box" id="m-assessment"></div>
+  </div>
+
+  <div class="m-sec">
+    <div class="m-sec-title">Proctoring & authenticity</div>
+    <div id="m-proctor"></div>
+  </div>
+
+  <div class="m-sec" id="photos-sec">
+    <div class="m-sec-title">Webcam captures</div>
+    <div class="photos-grid" id="m-photos"></div>
+  </div>
+
+  <div class="m-sec">
+    <div class="m-sec-title">Full interview transcript</div>
+    <div class="m-box" id="m-transcript"></div>
+  </div>
+
+  <div class="m-actions">
+    <button class="btn btn-blue" onclick="closeMod()">Close</button>
+    <button class="btn btn-out" onclick="forwardPanel()">Forward to panel →</button>
+    <button class="btn btn-out" onclick="rejectCandidate()" style="color:var(--red);border-color:rgba(239,68,68,.3)">Reject</button>
+  </div>
+</div>
+</div>
+
+<script>
+let candidates=[], activeCand=null;
+
+function load(){
+  try{candidates=JSON.parse(localStorage.getItem('tangoe_candidates')||'[]');}catch(e){candidates=[];}
+}
+
+function render(){
+  load();
+  const t=candidates.length;
+  const strong=candidates.filter(c=>['Strong Yes','Yes'].includes(c.assessment?.verdict)).length;
+  const scores=candidates.filter(c=>c.assessment?.score).map(c=>c.assessment.score);
+  const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'—';
+  const flagged=candidates.filter(c=>c.assessment?.authenticityFlags?.length>0||c.assessment?.tabSwitches>0).length;
+  const now=new Date();
+  const today=candidates.filter(c=>new Date(c.completedAt).toDateString()===now.toDateString()).length;
+
+  document.getElementById('st-total').textContent=t;
+  document.getElementById('st-strong').textContent=strong;
+  document.getElementById('st-avg').textContent=avg;
+  document.getElementById('st-flags').textContent=flagged;
+  document.getElementById('st-today').textContent=today;
+
+  const list=document.getElementById('clist');
+  if(!t){
+    list.innerHTML=`<div class="empty"><h3>No candidates yet</h3><p>Generate an interview link from the admin panel and share it with candidates.</p><br/><a href="admin.html" class="btn btn-blue" style="margin-top:8px">Go to admin panel →</a></div>`;
+    return;
+  }
+
+  list.innerHTML=candidates.map((c,idx)=>{
+    const cand=c.candidate||{};
+    const a=c.assessment||{};
+    const v=a.verdict||'Pending';
+    const s=a.score||0;
+    const jdMatch=a.jdMatch||0;
+    const cls=v==='Strong Yes'||v==='Yes'?'bg':v==='Maybe'?'ba':v==='No'?'br':'bx';
+    const ringColor=s>=8?'var(--green)':s>=6?'var(--amber)':'var(--red)';
+    const initials=(cand.name||'?').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+    const flags=a.authenticityFlags||[];
+    const tabs=a.tabSwitches||0;
+    const totalFlags=flags.length+(tabs>0?1:0)+(a.cameraSkipped?1:0);
+    const authDisplay=totalFlags>0
+      ? `<span style="color:var(--amber)">⚠ ${totalFlags} flag${totalFlags>1?'s':''}</span>`
+      : `<span style="color:var(--green)">✓ Clean</span>`;
+    const time=c.completedAt?new Date(c.completedAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+
+    return `<div class="tbl-row" onclick="openCand(${idx})">
+      <div class="name-cell">
+        <div class="avatar">${initials}</div>
+        <div>
+          <div style="font-weight:500;font-size:13px">${cand.name||'Unknown'}</div>
+          <div style="font-size:11px;color:var(--muted)">${cand.email||''} · ${time}</div>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--muted)">${cand.yoe||'—'}</div>
+      <div><div class="score-ring" style="border-color:${s?ringColor:'var(--border)'};color:${s?ringColor:'var(--muted)'}">${s||'—'}</div></div>
+      <div style="font-size:13px">${jdMatch?jdMatch+'%':'—'}</div>
+      <div><span class="badge ${cls}">${v}</span></div>
+      <div style="font-size:12px">${authDisplay}</div>
+      <div style="font-size:12px;color:var(--accent);font-weight:500">View →</div>
+    </div>`;
+  }).join('');
+}
+
+function openCand(idx){
+  const c=candidates[idx];
+  activeCand=c;
+  const cand=c.candidate||{};
+  const a=c.assessment||{};
+
+  document.getElementById('m-name').textContent=cand.name||'Candidate';
+  document.getElementById('m-meta').textContent=`${cand.yoe||''} · ${cand.tool||''} · ${cand.email||''}`;
+  document.getElementById('m-score').textContent=a.score||'—';
+
+  const v=a.verdict||'Pending';
+  const cls=v==='Strong Yes'||v==='Yes'?'bg':v==='Maybe'?'ba':v==='No'?'br':'bx';
+  const b=document.getElementById('m-badge');b.className='badge '+cls;b.textContent=v;
+
+  const jdMatch=a.jdMatch||0;
+  document.getElementById('m-jd-pct').textContent=jdMatch?jdMatch+'%':'—';
+  document.getElementById('m-jd-bar').style.width=jdMatch?jdMatch+'%':'0%';
+
+  document.getElementById('m-assessment').textContent=a.summary
+    ?`${a.summary}\n\n✓ Strengths:\n${(a.strengths||[]).map(x=>'  • '+x).join('\n')}\n\n⚠ Concerns:\n${(a.concerns||[]).map(x=>'  • '+x).join('\n')}`
+    :'Assessment not available.';
+
+  // Proctoring section
+  const flags=a.authenticityFlags||[];
+  const tabs=a.tabSwitches||0;
+  const photos=c.photos||[];
+  const proctorHtml=`
+    <div class="flag-item ${flags.length?'flag-warn':'flag-clean'}">
+      <span class="flag-icon">${flags.length?'⚠️':'✅'}</span>
+      <span>Answer authenticity: ${flags.length?flags.length+' flag(s) — '+flags.join(' | '):'No flags detected'}</span>
+    </div>
+    <div class="flag-item ${tabs>0?'flag-warn':'flag-clean'}">
+      <span class="flag-icon">${tabs>0?'⚠️':'✅'}</span>
+      <span>Tab switches: ${tabs>0?tabs+' detected':'None detected'}</span>
+    </div>
+    <div class="flag-item ${a.cameraSkipped?'flag-warn':'flag-clean'}">
+      <span class="flag-icon">${a.cameraSkipped?'⚠️':'✅'}</span>
+      <span>Camera: ${a.cameraSkipped?'Skipped by candidate':'Active throughout'}</span>
+    </div>
+    <div class="flag-item flag-clean">
+      <span class="flag-icon">📷</span>
+      <span>Photos captured: ${photos.length}</span>
+    </div>`;
+  document.getElementById('m-proctor').innerHTML=proctorHtml;
+
+  // Photos
+  const pGrid=document.getElementById('m-photos');
+  document.getElementById('photos-sec').style.display=photos.length?'block':'none';
+  pGrid.innerHTML=photos.slice(0,8).map(p=>`
+    <div class="photo-thumb"><img src="${p.dataUrl}" alt="Captured at ${p.time}"/></div>`).join('') ||
+    '<div style="font-size:13px;color:var(--muted)">No photos captured (camera was off or skipped)</div>';
+
+  // Transcript
+  document.getElementById('m-transcript').textContent=(c.transcript||[]).map((t,i)=>{
+    const flagNote=t.flags?.length?` [FLAGS: ${t.flags.join(', ')}]`:'';
+    return `Q${i+1}: ${t.q||''}\n\nCandidate${flagNote}: ${t.a||'(no answer)'}`;
+  }).join('\n\n────────────────\n\n');
+
+  document.getElementById('mbg').classList.add('open');
+}
+
+function closeMod(){document.getElementById('mbg').classList.remove('open');}
+
+function forwardPanel(){
+  if(!activeCand)return;
+  const c=activeCand.candidate||{};
+  const a=activeCand.assessment||{};
+  alert(`✅ Panel brief forwarded for ${c.name}.\n\nVerdict: ${a.verdict} (${a.score}/10)\nJD Match: ${a.jdMatch||'—'}%\n\n${a.summary||''}\n\nIn production this emails your engineering panel with the full brief + transcript.`);
+}
+
+function rejectCandidate(){
+  if(!activeCand)return;
+  const name=(activeCand.candidate||{}).name||'Candidate';
+  if(confirm(`Reject ${name}? This will mark them as rejected in the dashboard.`)){
+    activeCand.assessment.verdict='Rejected';
+    activeCand.assessment.score=0;
+    const existing=JSON.parse(localStorage.getItem('tangoe_candidates')||'[]');
+    const idx=existing.findIndex(c=>c.id===activeCand.id);
+    if(idx>=0){existing[idx]=activeCand;localStorage.setItem('tangoe_candidates',JSON.stringify(existing));}
+    closeMod();render();
+  }
+}
+
+render();
+setInterval(render,20000);
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tangoe Hiring</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#0a0d14;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#e8eaf0}
+.wrap{text-align:center;padding:40px 24px;max-width:480px}
+.logo{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;margin-bottom:8px}
+.logo span{color:#4f8eff}
+p{font-size:15px;color:#6b7394;margin-bottom:36px;line-height:1.65}
+.options{display:flex;flex-direction:column;gap:12px}
+.opt{display:block;padding:16px 24px;border-radius:12px;text-decoration:none;font-size:15px;font-weight:500;transition:all .15s;border:1px solid}
+.opt-blue{background:linear-gradient(135deg,#4f8eff,#7c5cfc);color:#fff;border-color:transparent}
+.opt-blue:hover{opacity:.88;transform:translateY(-1px)}
+.opt-out{background:transparent;color:#e8eaf0;border-color:#232840}
+.opt-out:hover{border-color:#4f8eff;color:#4f8eff}
+.divider{display:flex;align-items:center;gap:12px;color:#2d3352;font-size:12px;margin:4px 0}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#232840}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">Tangoe <span>Hiring</span></div>
+  <p>AI-powered candidate screening with camera proctoring</p>
+  <div class="options">
+    <a href="admin.html" class="opt opt-blue">Recruiter — Admin Panel →</a>
+    <div class="divider">or</div>
+    <a href="dashboard.html" class="opt opt-out">Recruiter — View Dashboard →</a>
+  </div>
+  <p style="margin-top:28px;font-size:12px;color:#3d4463">
+    Candidates: use the interview link shared with you by the Tangoe team
+  </p>
+</div>
+<script>
+  // If URL has ?cfg= param, this is a candidate — go straight to interview
+  if(window.location.search.includes('cfg=')){
+    window.location.href = 'interview.html' + window.location.search;
+  }
+</script>
+</body>
+</html>

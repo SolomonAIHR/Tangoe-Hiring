@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tangoe Hiring · Recruiter Setup</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#0a0d14;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#e8eaf0}
+.card{background:#111520;border:1px solid #232840;border-radius:16px;padding:36px;max-width:540px;width:90%}
+h1{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;margin-bottom:6px}
+.sub{font-size:14px;color:#6b7394;margin-bottom:28px;line-height:1.6}
+.section{margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid #232840}
+.sec-title{font-size:13px;font-weight:600;color:#e8eaf0;margin-bottom:4px}
+.sec-sub{font-size:12px;color:#6b7394;margin-bottom:14px;line-height:1.6}
+.step-box{background:#181d2e;border:1px solid #232840;border-radius:10px;padding:14px 16px;margin-bottom:14px;font-size:13px;color:#8b9bb4;line-height:1.75}
+.step-box strong{display:block;color:#e8eaf0;margin-bottom:4px}
+label{font-size:12px;color:#6b7394;font-weight:500;display:block;margin-bottom:5px}
+input{width:100%;font-family:'DM Sans',sans-serif;font-size:14px;color:#e8eaf0;background:#181d2e;border:1px solid #232840;border-radius:8px;padding:10px 14px;outline:none;margin-bottom:12px;transition:border .15s}
+input:focus{border-color:#4f8eff}
+.btn{width:100%;padding:12px;background:linear-gradient(135deg,#4f8eff,#7c5cfc);color:#fff;border:none;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;margin-top:8px}
+.btn:hover{opacity:.88}
+.status{margin-top:14px;padding:12px 16px;border-radius:8px;font-size:13px;display:none}
+.ok{background:rgba(34,201,122,.1);color:#22c97a;border:1px solid rgba(34,201,122,.2)}
+.err{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
+a{color:#4f8eff}
+.tag{display:inline-block;background:rgba(79,142,255,.1);border:1px solid rgba(79,142,255,.2);color:#4f8eff;font-size:11px;padding:2px 8px;border-radius:4px;margin-left:6px}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Recruiter Setup <span class="tag">One-time</span></h1>
+  <div class="sub">Set up your API key and email notifications. Candidates never see this page — they go straight to their interview via the unique link you generate.</div>
+
+  <div class="section">
+    <div class="sec-title">1. Anthropic API Key</div>
+    <div class="sec-sub">Powers the AI interview. Get yours from console.anthropic.com — you already have $5 credits loaded.</div>
+    <div class="step-box">
+      <strong>Where to find it:</strong>
+      Go to <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com/settings/keys</a> → Create key → copy immediately
+    </div>
+    <label>API Key</label>
+    <input type="password" id="api-key" placeholder="sk-ant-api03-..."/>
+  </div>
+
+  <div class="section">
+    <div class="sec-title">2. Email notifications via Formspree <span class="tag">Free</span></div>
+    <div class="sec-sub">Get a full candidate report emailed to rufus.solomon@tangoe.com after every interview.</div>
+    <div class="step-box">
+      <strong>Setup (2 mins, free):</strong>
+      1. Go to <a href="https://formspree.io" target="_blank">formspree.io</a> → sign up free<br/>
+      2. Click <strong>New Form</strong> → name it "Tangoe Results"<br/>
+      3. Set delivery email to <strong>rufus.solomon@tangoe.com</strong><br/>
+      4. Copy the endpoint: <code style="color:#4f8eff">https://formspree.io/f/xxxxxxxx</code><br/>
+      5. Paste below
+    </div>
+    <label>Formspree endpoint URL</label>
+    <input type="text" id="formspree-url" placeholder="https://formspree.io/f/xxxxxxxx"/>
+  </div>
+
+  <button class="btn" onclick="saveAndTest()">Save & test →</button>
+  <div class="status" id="status"></div>
+</div>
+<script>
+const sk = localStorage.getItem('anthropic_api_key');
+const sf = localStorage.getItem('formspree_url');
+if(sk) document.getElementById('api-key').value=sk;
+if(sf) document.getElementById('formspree-url').value=sf;
+
+async function saveAndTest(){
+  const key=document.getElementById('api-key').value.trim();
+  const fs=document.getElementById('formspree-url').value.trim();
+  const st=document.getElementById('status');
+  if(!key.startsWith('sk-ant')){st.className='status err';st.style.display='block';st.textContent='Key must start with sk-ant-api03-...';return;}
+  st.className='status';st.style.display='block';st.textContent='Testing API key...';
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'Hi'}]})
+    });
+    const d=await r.json();
+    if(d.content||d.id){
+      localStorage.setItem('anthropic_api_key',key);
+      if(fs) localStorage.setItem('formspree_url',fs);
+      if(fs&&fs.includes('formspree')){
+        st.textContent='API key works! Sending test email...';
+        await fetch(fs,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},
+          body:JSON.stringify({_subject:'Tangoe Hiring - Setup test',message:'Email notifications are working correctly for Tangoe Hiring system.',_replyto:'rufus.solomon@tangoe.com'})});
+        st.className='status ok';
+        st.innerHTML='All set! Check rufus.solomon@tangoe.com for a test email.<br/><br/><a href="admin.html" style="color:#22c97a;font-weight:600">Go to Admin Panel →</a>';
+      } else {
+        st.className='status ok';
+        st.innerHTML='API key works! Add Formspree URL to enable emails.<br/><br/><a href="admin.html" style="color:#22c97a;font-weight:600">Go to Admin Panel →</a>';
+      }
+    } else {
+      st.className='status err';st.textContent='API error: '+(d.error?.message||JSON.stringify(d));
+    }
+  }catch(e){st.className='status err';st.textContent='Error: '+e.message;}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "builds": [{ "src": "*.html", "use": "@vercel/static" }],
+  "routes": [
+    { "src": "/", "dest": "/setup.html" },
+    { "src": "/admin", "dest": "/admin.html" },
+    { "src": "/interview", "dest": "/interview.html" },
+    { "src": "/dashboard", "dest": "/dashboard.html" }
+  ]
+}

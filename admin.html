@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tangoe · Recruiter Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0d14;--surface:#111520;--surface2:#181d2e;--border:#232840;
+  --accent:#4f8eff;--accent2:#7c5cfc;--green:#22c97a;--amber:#f59e0b;--red:#ef4444;
+  --text:#e8eaf0;--muted:#6b7394;--ink:#0a0d14;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid var(--border);background:var(--surface)}
+.logo{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.5px;display:flex;align-items:center;gap:10px}
+.logo-dot{width:8px;height:8px;background:var(--accent);border-radius:50%;display:inline-block}
+.nav-tag{font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:3px 10px;color:var(--muted)}
+.wrap{max-width:900px;margin:0 auto;padding:40px 24px}
+.page-title{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;margin-bottom:6px}
+.page-sub{color:var(--muted);font-size:14px;margin-bottom:36px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px}
+.card-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;margin-bottom:4px;color:var(--text)}
+.card-sub{font-size:12px;color:var(--muted);margin-bottom:18px}
+.fl{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+label{font-size:12px;color:var(--muted);font-weight:500}
+input,select,textarea{width:100%;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;outline:none;transition:border .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical}
+.btn{padding:11px 22px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+.btn-primary:hover{opacity:.88;transform:translateY(-1px)}
+.btn-out{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-out:hover{border-color:var(--accent);color:var(--accent)}
+.btn-green{background:var(--green);color:var(--ink);font-weight:600}
+.btn-green:hover{opacity:.88}
+.link-box{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-top:16px;display:none}
+.link-url{font-family:monospace;font-size:13px;color:var(--accent);word-break:break-all;margin-bottom:12px}
+.link-actions{display:flex;gap:8px}
+.copy-btn{padding:7px 16px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif}
+.copy-btn:hover{border-color:var(--accent);color:var(--accent)}
+.jd-preview{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;font-size:13px;color:var(--muted);line-height:1.7;max-height:200px;overflow-y:auto;margin-top:12px;display:none;white-space:pre-wrap}
+.step-indicator{display:flex;align-items:center;gap:0;margin-bottom:32px}
+.step{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.step.active{color:var(--accent);font-weight:500}
+.step.done{color:var(--green)}
+.step-num{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:var(--surface2)}
+.step.active .step-num{border-color:var(--accent);background:var(--accent);color:#fff}
+.step.done .step-num{border-color:var(--green);background:var(--green);color:var(--ink)}
+.step-line{width:32px;height:1px;background:var(--border);margin:0 8px}
+.notice{background:rgba(79,142,255,.08);border:1px solid rgba(79,142,255,.2);border-radius:10px;padding:14px 16px;font-size:13px;color:var(--accent);margin-top:16px;line-height:1.65}
+.full{grid-column:1/-1}
+.saved-jds{margin-top:32px}
+.saved-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:600;margin-bottom:14px;color:var(--text)}
+.jd-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.jd-name{font-weight:500;font-size:14px}
+.jd-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.jd-actions{display:flex;gap:8px}
+.tag{display:inline-block;font-size:11px;padding:3px 10px;border-radius:999px;font-weight:500;background:rgba(79,142,255,.12);color:var(--accent);border:1px solid rgba(79,142,255,.2)}
+.empty-jd{text-align:center;padding:40px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="logo"><span class="logo-dot"></span>Tangoe <span style="color:var(--muted);font-weight:400;margin-left:2px">Hiring</span></div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <span class="nav-tag">Admin Panel</span>
+    <a href="dashboard.html" class="btn btn-out" style="font-size:13px;padding:8px 16px;text-decoration:none">Dashboard →</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="page-title">Recruiter Admin Panel</div>
+  <div class="page-sub">Load a Job Description, generate a candidate interview link, and start screening.</div>
+
+  <div class="step-indicator">
+    <div class="step active" id="st1"><div class="step-num">1</div>Load JD</div>
+    <div class="step-line"></div>
+    <div class="step" id="st2"><div class="step-num">2</div>Configure</div>
+    <div class="step-line"></div>
+    <div class="step" id="st3"><div class="step-num">3</div>Generate Link</div>
+  </div>
+
+  <!-- STEP 1: Load JD -->
+  <div id="step1">
+    <div class="card">
+      <div class="card-title">Job Description</div>
+      <div class="card-sub">Paste the full JD — Claude will use it to generate role-specific screening questions.</div>
+      <div class="fl"><label>Role title</label><input type="text" id="jd-role" placeholder="e.g. QA Engineer" value="QA Engineer"/></div>
+      <div class="fl"><label>Paste Job Description</label><textarea id="jd-text" rows="12" placeholder="Paste the full job description here...
+
+Example:
+We are looking for a QA Engineer to join our team at Tangoe...
+Requirements:
+- 3+ years of QA experience
+- Experience with Selenium, Cypress or similar tools
+- Strong understanding of SDLC and Agile methodology
+..."></textarea></div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="btn btn-primary" onclick="saveJD()">Save JD & Continue →</button>
+        <button class="btn btn-out" onclick="loadSampleJD()">Load sample QA JD</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Configure -->
+  <div id="step2" style="display:none">
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Interview Configuration</div>
+        <div class="card-sub">Set how the AI interview should behave for this role.</div>
+        <div class="fl"><label>Number of questions</label>
+          <select id="cfg-questions">
+            <option value="4">4 questions — Quick screen (8-10 min)</option>
+            <option value="6" selected>6 questions — Standard screen (12-15 min)</option>
+            <option value="8">8 questions — Deep screen (20-25 min)</option>
+          </select>
+        </div>
+        <div class="fl"><label>Interview focus</label>
+          <select id="cfg-focus">
+            <option value="balanced">Balanced — technical + soft skills</option>
+            <option value="technical">Technical depth — tools, automation, frameworks</option>
+            <option value="process">Process — SDLC, Agile, test strategy</option>
+            <option value="ownership">Ownership — past projects, impact, leadership</option>
+          </select>
+        </div>
+        <div class="fl"><label>Experience level expected</label>
+          <select id="cfg-level">
+            <option value="junior">Junior (1-2 years)</option>
+            <option value="mid" selected>Mid (3-5 years)</option>
+            <option value="senior">Senior (6+ years)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Proctoring Settings</div>
+        <div class="card-sub">Camera and anti-cheat settings for this interview.</div>
+        <div class="fl">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="cfg-camera" checked style="width:auto;margin:0"/> Require webcam proctoring
+          </label>
+        </div>
+        <div class="fl">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="cfg-paste" checked style="width:auto;margin:0"/> Detect copy-paste answers
+          </label>
+        </div>
+        <div class="fl">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="cfg-tab" checked style="width:auto;margin:0"/> Detect tab switching
+          </label>
+        </div>
+        <div class="fl"><label>Photo capture interval</label>
+          <select id="cfg-photo">
+            <option value="30">Every 30 seconds</option>
+            <option value="60" selected>Every 60 seconds</option>
+            <option value="120">Every 2 minutes</option>
+          </select>
+        </div>
+        <div class="fl"><label>Link expires after</label>
+          <select id="cfg-expiry">
+            <option value="24">24 hours</option>
+            <option value="48" selected>48 hours</option>
+            <option value="72">72 hours</option>
+            <option value="168">7 days</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card full">
+        <div class="card-title">Recruiter Notification</div>
+        <div class="card-sub">Where to send results when a candidate completes the interview.</div>
+        <div class="grid">
+          <div class="fl"><label>Recruiter email</label><input type="email" id="cfg-email" placeholder="recruiter@tangoe.com"/></div>
+          <div class="fl"><label>CC (optional)</label><input type="email" id="cfg-cc" placeholder="manager@tangoe.com"/></div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-out" onclick="goStep(1)">← Back</button>
+      <button class="btn btn-primary" onclick="generateLink()">Generate Interview Link →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: Link generated -->
+  <div id="step3" style="display:none">
+    <div class="card">
+      <div class="card-title">✅ Interview link generated</div>
+      <div class="card-sub">Share this link with your QA Engineer candidate. It opens directly into their proctored AI interview.</div>
+
+      <div class="link-box" id="link-box" style="display:block">
+        <div class="link-url" id="link-url"></div>
+        <div class="link-actions">
+          <button class="copy-btn" onclick="copyLink()">Copy link</button>
+          <button class="copy-btn" onclick="copyEmail()">Copy email invite</button>
+          <a id="test-link" href="#" target="_blank" class="copy-btn" style="text-decoration:none">Open & test →</a>
+        </div>
+      </div>
+
+      <div class="notice" style="margin-top:20px">
+        📋 <strong>What happens next:</strong> Candidate opens the link → grants camera access → completes 6 AI questions based on your JD → you receive a full report by email + results appear in your dashboard automatically.
+      </div>
+
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+        <div class="card-sub">JD loaded for this interview:</div>
+        <div class="jd-preview" id="jd-preview-final" style="display:block"></div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="btn btn-primary" onclick="newInterview()">Create another interview →</button>
+        <a href="dashboard.html" class="btn btn-out" style="text-decoration:none">View dashboard</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAVED JDs -->
+  <div class="saved-jds" id="saved-section">
+    <div class="saved-title">Active interview links</div>
+    <div id="saved-list"></div>
+  </div>
+</div>
+
+<script>
+const SITE_URL = window.location.origin;
+
+function loadSampleJD(){
+  document.getElementById('jd-role').value = 'QA Engineer';
+  document.getElementById('jd-text').value = `QA Engineer — Tangoe
+
+About Tangoe:
+Tangoe is a leading provider of technology expense management solutions. We help enterprises manage, optimize, and transform their technology assets.
+
+Role Overview:
+We are looking for an experienced QA Engineer to join our engineering team. You will be responsible for ensuring the quality of our SaaS platform through manual and automated testing.
+
+Key Responsibilities:
+- Design and execute test plans, test cases, and test scripts for web and API testing
+- Build and maintain automated test suites using Selenium, Cypress, or similar frameworks
+- Collaborate with developers in Agile sprints to ensure quality at every stage
+- Perform regression, integration, smoke, and UAT testing
+- Identify, document, and track defects using JIRA or similar tools
+- Participate in sprint planning and retrospectives as a QA voice
+- Mentor junior QA team members
+
+Requirements:
+- 3-5 years of QA experience in a SaaS or enterprise software environment
+- Strong hands-on experience with automation tools (Selenium, Cypress, Playwright)
+- Experience with API testing tools (Postman, REST Assured)
+- Familiarity with CI/CD pipelines (Jenkins, GitHub Actions)
+- Good understanding of Agile/Scrum methodology
+- Experience with SQL for database validation
+- Excellent communication and documentation skills
+
+Nice to have:
+- Experience with performance testing (JMeter, k6)
+- Knowledge of cloud platforms (AWS, Azure)
+- ISTQB certification`;
+}
+
+function saveJD(){
+  const role = document.getElementById('jd-role').value.trim();
+  const text = document.getElementById('jd-text').value.trim();
+  if(!role || text.length < 50){
+    alert('Please enter a role title and paste a job description (at least 50 characters).');
+    return;
+  }
+  localStorage.setItem('active_jd', JSON.stringify({role, text, savedAt: new Date().toISOString()}));
+  goStep(2);
+}
+
+function generateLink(){
+  const jd = JSON.parse(localStorage.getItem('active_jd')||'{}');
+  const config = {
+    role: jd.role,
+    jd: jd.text,
+    questions: document.getElementById('cfg-questions').value,
+    focus: document.getElementById('cfg-focus').value,
+    level: document.getElementById('cfg-level').value,
+    camera: document.getElementById('cfg-camera').checked,
+    pasteDetect: document.getElementById('cfg-paste').checked,
+    tabDetect: document.getElementById('cfg-tab').checked,
+    photoInterval: document.getElementById('cfg-photo').value,
+    expiry: document.getElementById('cfg-expiry').value,
+    email: document.getElementById('cfg-email').value,
+    cc: document.getElementById('cfg-cc').value,
+    createdAt: new Date().toISOString(),
+    id: Date.now()
+  };
+
+  // Save config
+  const configs = JSON.parse(localStorage.getItem('interview_configs')||'[]');
+  configs.unshift(config);
+  localStorage.setItem('interview_configs', JSON.stringify(configs));
+  localStorage.setItem('current_config_id', config.id);
+
+  // Store config by ID for interview page to read
+  localStorage.setItem('config_'+config.id, JSON.stringify(config));
+
+  const url = `${SITE_URL}/interview.html?cfg=${config.id}`;
+  document.getElementById('link-url').textContent = url;
+  document.getElementById('test-link').href = url;
+  document.getElementById('jd-preview-final').textContent = jd.text;
+  goStep(3);
+  renderSaved();
+}
+
+function goStep(n){
+  [1,2,3].forEach(i=>{
+    document.getElementById('step'+i).style.display = i===n?'block':'none';
+    const st = document.getElementById('st'+i);
+    st.classList.remove('active','done');
+    if(i<n) st.classList.add('done');
+    else if(i===n) st.classList.add('active');
+  });
+}
+
+function copyLink(){
+  const url = document.getElementById('link-url').textContent;
+  navigator.clipboard.writeText(url);
+  event.target.textContent='Copied!';
+  setTimeout(()=>event.target.textContent='Copy link',2000);
+}
+
+function copyEmail(){
+  const url = document.getElementById('link-url').textContent;
+  const jd = JSON.parse(localStorage.getItem('active_jd')||'{}');
+  const email = `Subject: Tangoe – QA Engineer Interview Invitation
+
+Dear Candidate,
+
+Thank you for your interest in the ${jd.role||'QA Engineer'} position at Tangoe.
+
+We'd like to invite you to complete our AI-powered initial screening interview. This takes approximately 12-15 minutes and can be done at your convenience.
+
+Please click the link below to begin:
+${url}
+
+Important:
+• Find a quiet, well-lit space
+• Enable your webcam when prompted (required for proctoring)
+• Answer all questions genuinely from your own experience
+• The link expires in 48 hours
+
+Best regards,
+Tangoe Talent Acquisition Team`;
+  navigator.clipboard.writeText(email);
+  event.target.textContent='Email copied!';
+  setTimeout(()=>event.target.textContent='Copy email invite',2000);
+}
+
+function newInterview(){
+  document.getElementById('jd-text').value='';
+  document.getElementById('jd-role').value='QA Engineer';
+  goStep(1);
+}
+
+function renderSaved(){
+  const configs = JSON.parse(localStorage.getItem('interview_configs')||'[]');
+  const list = document.getElementById('saved-list');
+  document.getElementById('saved-section').style.display = configs.length ? 'block' : 'none';
+  if(!configs.length){list.innerHTML='<div class="empty-jd">No active links yet.</div>';return;}
+  list.innerHTML = configs.map(c=>{
+    const url = `${SITE_URL}/interview.html?cfg=${c.id}`;
+    const d = new Date(c.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    const candidates = JSON.parse(localStorage.getItem('tangoe_candidates')||'[]').filter(x=>x.configId==c.id).length;
+    return `<div class="jd-row">
+      <div>
+        <div class="jd-name">${c.role} <span class="tag">${c.level}</span></div>
+        <div class="jd-meta">Created ${d} · ${candidates} candidate${candidates!==1?'s':''} completed · ${c.questions} questions · ${c.focus}</div>
+      </div>
+      <div class="jd-actions">
+        <button class="copy-btn" onclick="navigator.clipboard.writeText('${url}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',2000)">Copy link</button>
+        <a href="${url}" target="_blank" class="copy-btn" style="text-decoration:none">Open →</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+renderSaved();
+</script>
+</body>
+</html>
