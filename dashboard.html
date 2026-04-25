@@ -82,7 +82,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="logo"><div class="logo-dot"></div>Tangoe <span style="font-weight:400;color:var(--muted);margin-left:2px">Hiring</span></div>
   <div class="nav-right">
     <span style="font-size:12px;color:var(--muted)">Recruiter Dashboard</span>
-    <a href="admin.html" class="btn btn-blue">+ New interview link</a>
+    <a href="/Tangoe-Hiring/admin.html" class="btn btn-blue">+ New interview link</a>
     <button class="btn btn-out" onclick="if(confirm('Clear all data?')){localStorage.removeItem('tangoe_candidates');location.reload()}">Clear</button>
   </div>
 </nav>
@@ -184,7 +184,7 @@ function render(){
 
   const list=document.getElementById('clist');
   if(!t){
-    list.innerHTML=`<div class="empty"><h3>No candidates yet</h3><p>Generate an interview link from the admin panel and share it with candidates.</p><br/><a href="admin.html" class="btn btn-blue" style="margin-top:8px">Go to admin panel →</a></div>`;
+    list.innerHTML=`<div class="empty"><h3>No candidates yet</h3><p>Generate an interview link from the admin panel and share it with candidates.</p><br/><a href="/Tangoe-Hiring/admin.html" class="btn btn-blue" style="margin-top:8px">Go to admin panel →</a></div>`;
     return;
   }
 
