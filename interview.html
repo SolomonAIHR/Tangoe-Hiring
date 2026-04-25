@@ -221,6 +221,19 @@ let config = {};
 if(cfgId){
   try{ config = JSON.parse(localStorage.getItem('config_'+cfgId)||'{}'); }catch(e){}
 }
+// Default config if none found in localStorage (works for any device)
+const DEFAULT_CONFIG = {
+  role: 'QA Engineer',
+  questions: 6,
+  focus: 'balanced',
+  level: 'mid',
+  camera: true,
+  pasteDetect: true,
+  tabDetect: true,
+  photoInterval: 60,
+  jd: ''
+};
+config = Object.keys(config).length > 0 ? config : DEFAULT_CONFIG;
 const TOTAL_Q = parseInt(config.questions)||6;
 const ROLE = config.role||'QA Engineer';
 const JD = config.jd||'';
