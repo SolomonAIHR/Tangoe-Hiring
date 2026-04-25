@@ -457,12 +457,7 @@ async function finish(reply){
       tab_switches: assessment.tabSwitches||0,
       camera_skipped: assessment.cameraSkipped?'Yes':'No',
       photos_captured: photos.length,
-      transcript: tx.map((t,i)=>`Q${i+1}: ${t.q||''}
-Answer: ${t.a||'(no answer)'}`).join('
-
----
-
-'),
+      transcript: tx.map((t,i)=>'Q'+(i+1)+': '+(t.q||'')+'\nAnswer: '+(t.a||'(no answer)')).join('\n\n---\n\n'),
       completed_at: new Date().toLocaleString()
     };
     fetch(FORMSPREE,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(emailBody)})
