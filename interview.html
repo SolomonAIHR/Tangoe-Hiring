@@ -79,7 +79,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .done-wrap p{color:var(--muted);font-size:15px;line-height:1.65;max-width:420px;margin:0 auto}
 
 /* FORMS */
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px} @media(max-width:600px){.g2{grid-template-columns:1fr}}
 .fl{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
 label{font-size:12px;color:var(--muted);font-weight:500}
 input[type=text],input[type=email],select{width:100%;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 13px;outline:none;transition:all .15s}
@@ -88,6 +88,17 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
 .rules-list li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--muted);line-height:1.5}
 .rules-list li span:first-child{font-size:16px;flex-shrink:0}
 @media(max-width:560px){.g2{grid-template-columns:1fr}}
+
+@media(max-width:600px){
+  .wrap{padding:0 10px 30px}
+  .card{padding:16px}
+  .chat-area{max-height:260px}
+  .camera-wrap{width:90px!important;max-width:90px!important}
+  .chat-row input{font-size:16px}
+  .steps{padding:16px 8px;gap:0}
+  .s-line{width:20px}
+  .s-item{font-size:11px}
+}
 </style>
 </head>
 <body>
@@ -102,9 +113,11 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
   <div class="s-line"></div>
   <div class="s-item" id="si-2"><div class="s-dot" id="sd-2">2</div>Camera check</div>
   <div class="s-line"></div>
-  <div class="s-item" id="si-3"><div class="s-dot" id="sd-3">3</div>Interview</div>
+  <div class="s-item" id="si-3"><div class="s-dot" id="sd-3">3</div>Video intro</div>
   <div class="s-line"></div>
-  <div class="s-item" id="si-4"><div class="s-dot" id="sd-4">4</div>Done</div>
+  <div class="s-item" id="si-4"><div class="s-dot" id="sd-4">4</div>Interview</div>
+  <div class="s-line"></div>
+  <div class="s-item" id="si-5"><div class="s-dot" id="sd-5">5</div>Done</div>
 </div>
 
 <div class="wrap">
@@ -148,7 +161,7 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
       <div class="card-title">Camera & proctoring check</div>
       <div class="card-sub">We need access to your webcam. Your video is NOT recorded or shared — only periodic still photos are captured for verification.</div>
       <div class="camera-wrap">
-        <video id="cam-video" autoplay muted playsinline></video>
+        <video id="cam-video" autoplay muted playsinline webkit-playsinline></video>
         <div class="cam-overlay" id="cam-overlay">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.069A1 1 0 0121 8.876V15.12a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
           <span>Click below to enable camera</span>
@@ -172,13 +185,13 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
   </div>
 
   <!-- STEP 3: Interview -->
-  <div id="s3" style="display:none">
+  <div id="s5" style="display:none">
     <div id="cheat-banner" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:10px;padding:10px 16px;font-size:13px;color:var(--amber);margin-bottom:12px;display:flex;align-items:center;gap:8px"></div>
     <div class="card">
       <div class="card-title" id="int-label">QA Engineer Interview · Tangoe</div>
-      <div style="display:flex;gap:12px;margin-bottom:16px">
-        <div class="camera-wrap" style="width:140px;max-width:140px;flex-shrink:0;aspect-ratio:4/3;border-radius:8px">
-          <video id="cam-video2" autoplay muted playsinline style="width:100%;height:100%;object-fit:cover;border-radius:8px"></video>
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+        <div class="camera-wrap" style="width:120px;max-width:120px;flex-shrink:0;aspect-ratio:4/3;border-radius:8px">
+          <video id="cam-video2" autoplay muted playsinline webkit-playsinline style="width:100%;height:100%;object-fit:cover;border-radius:8px"></video>
           <div id="cam-status2" style="position:absolute;top:6px;left:6px;font-size:10px;font-weight:600;padding:3px 8px;border-radius:999px;background:rgba(22,163,74,.9);color:#fff;display:none">● REC</div>
         </div>
         <div style="flex:1;display:flex;flex-direction:column">
@@ -197,7 +210,7 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
   </div>
 
   <!-- STEP 4: Done -->
-  <div id="s4" style="display:none">
+  <div id="s5" style="display:none">
     <div class="done-wrap">
       <div class="done-icon">✓</div>
       <h2>Interview complete!</h2>
@@ -211,17 +224,41 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
 const API = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-haiku-4-5-20251001";
 // API key is never stored in code — loaded from encrypted session only
-const API_KEY = "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";
+const API_KEY = "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";
 
 
 // Load config from URL
 const urlParams = new URLSearchParams(window.location.search);
 const cfgId = urlParams.get('cfg');
 let config = {};
-if(cfgId){
+
+// Option A — Read config from URL parameters (works on ANY device, no localStorage needed)
+// Priority: URL params > localStorage > default
+const urlRole = urlParams.get('role');
+const urlJd = urlParams.get('jd') ? decodeURIComponent(urlParams.get('jd')) : '';
+const urlQ = urlParams.get('q');
+const urlLevel = urlParams.get('level');
+const urlFocus = urlParams.get('focus');
+
+if(urlRole || urlJd){
+  // Config is embedded in the URL — works for everyone on any device
+  config = {
+    role: urlRole || 'QA Engineer',
+    jd: urlJd || '',
+    questions: parseInt(urlQ)||6,
+    level: urlLevel || 'mid',
+    focus: urlFocus || 'balanced',
+    camera: true,
+    pasteDetect: true,
+    tabDetect: true,
+    photoInterval: 60
+  };
+} else if(cfgId){
+  // Try localStorage (recruiter's browser)
   try{ config = JSON.parse(localStorage.getItem('config_'+cfgId)||'{}'); }catch(e){}
 }
-// Default config if none found in localStorage (works for any device)
+
+// Default fallback
 const DEFAULT_CONFIG = {
   role: 'QA Engineer',
   questions: 6,
@@ -257,14 +294,16 @@ document.addEventListener('visibilitychange',()=>{
 });
 
 function setStep(n){
-  [1,2,3,4].forEach(i=>{
+  [1,2,3,4,5].forEach(i=>{
     const si=document.getElementById('si-'+i);
     const sd=document.getElementById('sd-'+i);
+    if(!si) return;
     si.classList.remove('active','done');
     if(i<n){si.classList.add('done');sd.textContent='✓';}
     else if(i===n){si.classList.add('active');sd.textContent=i;}
     else{sd.textContent=i;}
-    document.getElementById('s'+i).style.display=i===n?'block':'none';
+    const el=document.getElementById('s'+i);
+    if(el) el.style.display=i===n?'block':'none';
   });
 }
 
@@ -280,7 +319,10 @@ function goCamera(){
 
 async function startCamera(){
   try{
-    stream = await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    });
     document.getElementById('cam-video').srcObject = stream;
     document.getElementById('cam-overlay').style.display='none';
     document.getElementById('cam-status').style.display='block';
@@ -465,7 +507,7 @@ async function finish(reply){
   }
 
   document.getElementById('done-email').textContent=cur.email;
-  setStep(4);
+  setStep(5);
 }
 
 // ── CAMERA / PHOTO CAPTURE ───────────────────────────────────────────────
@@ -530,6 +572,134 @@ function addBubble(t,type){
 function scrollChat(){const c=document.getElementById('chat-area');c.scrollTop=c.scrollHeight;}
 function setQLabel(n){document.getElementById('q-label').textContent=n>TOTAL_Q?'Wrapping up…':`Question ${Math.min(n,TOTAL_Q)} of ${TOTAL_Q}`;}
 function updateDots(n){document.querySelectorAll('.q-dot').forEach((d,i)=>d.classList.toggle('done',i<n));}
+
+// ── VIDEO SELF INTRODUCTION ──────────────────────────────────────────────
+let introRecorder = null;
+let introChunks = [];
+let introBlob = null;
+let introTimerInterval = null;
+let introSeconds = 0;
+const MIN_INTRO_SECONDS = 180; // 3 minutes
+const MAX_INTRO_SECONDS = 300; // 5 minutes
+
+function startVideoIntro(){
+  // Show video intro step and connect camera
+  const preview = document.getElementById('intro-preview');
+  if(stream){
+    preview.srcObject = stream;
+  }
+}
+
+function startIntroRecording(){
+  if(!stream){ alert('Camera not available. Please go back and enable camera.'); return; }
+  
+  introChunks = [];
+  introSeconds = 0;
+  
+  try {
+    introRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
+  } catch(e) {
+    introRecorder = new MediaRecorder(stream);
+  }
+  
+  introRecorder.ondataavailable = e => { if(e.data.size > 0) introChunks.push(e.data); };
+  introRecorder.onstop = () => {
+    introBlob = new Blob(introChunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(introBlob);
+    document.getElementById('intro-video').src = url;
+    document.getElementById('intro-playback').style.display = 'block';
+    document.getElementById('intro-preview').style.display = 'none';
+    document.getElementById('intro-rec-badge').style.display = 'none';
+    document.getElementById('intro-stop-btn').style.display = 'none';
+    document.getElementById('intro-redo-btn').style.display = 'inline-block';
+    
+    if(introSeconds >= MIN_INTRO_SECONDS){
+      document.getElementById('intro-proceed-btn').style.display = 'inline-block';
+      document.getElementById('intro-min-warn').style.display = 'none';
+    } else {
+      document.getElementById('intro-min-warn').style.display = 'block';
+      document.getElementById('intro-proceed-btn').style.display = 'none';
+    }
+  };
+  
+  introRecorder.start(1000);
+  
+  document.getElementById('intro-start-btn').style.display = 'none';
+  document.getElementById('intro-stop-btn').style.display = 'inline-block';
+  document.getElementById('intro-rec-badge').style.display = 'block';
+  document.getElementById('intro-min-warn').style.display = 'none';
+  
+  // Start timer
+  introTimerInterval = setInterval(() => {
+    introSeconds++;
+    const m = Math.floor(introSeconds/60);
+    const s = introSeconds % 60;
+    document.getElementById('intro-timer').textContent = m + ':' + String(s).padStart(2,'0');
+    
+    // Auto-stop at max
+    if(introSeconds >= MAX_INTRO_SECONDS){
+      stopIntroRecording();
+    }
+    
+    // Show proceed button at min
+    if(introSeconds === MIN_INTRO_SECONDS && introRecorder && introRecorder.state === 'recording'){
+      // Visual cue that minimum reached
+      document.getElementById('intro-timer').style.background = 'rgba(22,163,74,.8)';
+    }
+  }, 1000);
+}
+
+function stopIntroRecording(){
+  if(introRecorder && introRecorder.state === 'recording'){
+    introRecorder.stop();
+    clearInterval(introTimerInterval);
+  }
+}
+
+function redoIntro(){
+  introBlob = null;
+  introSeconds = 0;
+  document.getElementById('intro-timer').textContent = '0:00';
+  document.getElementById('intro-timer').style.background = 'rgba(0,0,0,.6)';
+  document.getElementById('intro-playback').style.display = 'none';
+  document.getElementById('intro-preview').style.display = 'block';
+  document.getElementById('intro-start-btn').style.display = 'inline-block';
+  document.getElementById('intro-stop-btn').style.display = 'none';
+  document.getElementById('intro-redo-btn').style.display = 'none';
+  document.getElementById('intro-proceed-btn').style.display = 'none';
+  document.getElementById('intro-min-warn').style.display = 'none';
+  document.getElementById('intro-rec-badge').style.display = 'none';
+}
+
+function proceedToInterview(){
+  // Move to AI interview (step 4)
+  setStep(5);
+  
+  // Mirror stream to interview camera
+  if(stream){
+    document.getElementById('cam-video2').srcObject = stream;
+    document.getElementById('cam-status2').style.display='block';
+    startPhotoCapture();
+  }
+  
+  // Build question dots
+  const dots = document.getElementById('q-dots');
+  dots.innerHTML = Array(TOTAL_Q).fill('<div class="q-dot"></div>').join('');
+  
+  // Init typing tracker
+  initTypingTracker();
+  
+  // Start interview
+  const initMsg = "Candidate: "+cur.name+" | Role: "+ROLE+" | Experience: "+cur.yoe+" | Primary tool: "+cur.tool;
+  chat.push({role:'user',content:initMsg});
+  callClaude().then(reply => {
+    chat.push({role:'assistant',content:reply});
+    tx.push({q:reply,a:null});
+    addBubble(reply,false);
+    setQLabel(1);
+  });
+}
+// ─────────────────────────────────────────────────────────────────────────
 </script>
 </body>
 </html>
