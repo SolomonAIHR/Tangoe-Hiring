@@ -313,9 +313,10 @@ function generateLink(){
   // Store config by ID for interview page to read
   localStorage.setItem('config_'+config.id, JSON.stringify(config));
 
-  // Option A — embed JD and config directly in URL (works on any device)
-  const jdEncoded = encodeURIComponent(config.jd.substring(0, 1000)); // first 1000 chars of JD
-  const url = `${SITE_URL}/interview.html?cfg=${config.id}&role=${encodeURIComponent(config.role)}&q=${config.questions}&level=${config.level}&focus=${config.focus}&jd=${jdEncoded}`;
+  // Generate short clean URL - store config in localStorage with short ID
+  const shortId = config.role.toLowerCase().replace(/[^a-z0-9]/g,'-').substring(0,15) + '-' + String(config.id).slice(-4);
+  localStorage.setItem('jd_'+shortId, JSON.stringify(config));
+  const url = `${SITE_URL}/interview.html?id=${shortId}&role=${encodeURIComponent(config.role)}&q=${config.questions}&level=${config.level}`;
   document.getElementById('link-url').textContent = url;
   document.getElementById('test-link').href = url;
   document.getElementById('jd-preview-final').textContent = jd.text;
