@@ -193,11 +193,24 @@ Requirements:
       <div class="card-sub">Share this link with your QA Engineer candidate. It opens directly into their proctored AI interview.</div>
 
       <div class="link-box" id="link-box" style="display:block">
-        <div class="link-url" id="link-url"></div>
-        <div class="link-actions">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Full interview link (copy this)</div>
+        <div class="link-url" id="link-url" style="font-size:12px;word-break:break-all"></div>
+        <div class="link-actions" style="margin-top:10px">
           <button class="copy-btn" onclick="copyLink()">Copy link</button>
           <button class="copy-btn" onclick="copyEmail()">Copy email invite</button>
-          <a id="test-link" href="#" target="_blank" class="copy-btn" style="text-decoration:none">Open & test →</a>
+          <button class="copy-btn" onclick="copyLinkedIn()">Copy LinkedIn post</button>
+          <a id="test-link" href="#" target="_blank" class="copy-btn" style="text-decoration:none">Test it →</a>
+        </div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Works on any device — no setup needed for candidates</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span style="font-size:12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);border-radius:6px;padding:3px 10px">✓ LinkedIn</span>
+            <span style="font-size:12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);border-radius:6px;padding:3px 10px">✓ WhatsApp</span>
+            <span style="font-size:12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);border-radius:6px;padding:3px 10px">✓ Email</span>
+            <span style="font-size:12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);border-radius:6px;padding:3px 10px">✓ SMS</span>
+            <span style="font-size:12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);border-radius:6px;padding:3px 10px">✓ QR Code</span>
+            <span style="font-size:12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);border-radius:6px;padding:3px 10px">✓ ADP email</span>
+          </div>
         </div>
       </div>
 
@@ -300,7 +313,9 @@ function generateLink(){
   // Store config by ID for interview page to read
   localStorage.setItem('config_'+config.id, JSON.stringify(config));
 
-  const url = `${SITE_URL}/interview.html?cfg=${config.id}`;
+  // Option A — embed JD and config directly in URL (works on any device)
+  const jdEncoded = encodeURIComponent(config.jd.substring(0, 1000)); // first 1000 chars of JD
+  const url = `${SITE_URL}/interview.html?cfg=${config.id}&role=${encodeURIComponent(config.role)}&q=${config.questions}&level=${config.level}&focus=${config.focus}&jd=${jdEncoded}`;
   document.getElementById('link-url').textContent = url;
   document.getElementById('test-link').href = url;
   document.getElementById('jd-preview-final').textContent = jd.text;
@@ -323,6 +338,23 @@ function copyLink(){
   navigator.clipboard.writeText(url);
   event.target.textContent='Copied!';
   setTimeout(()=>event.target.textContent='Copy link',2000);
+}
+
+function copyLinkedIn(){
+  const url = document.getElementById('link-url').textContent;
+  const jd = JSON.parse(localStorage.getItem('active_jd')||'{}');
+  const post = `We're hiring a ${jd.role||'QA Engineer'} at Tangoe! 🚀
+
+If you're interested, skip the queue and complete our AI-powered screening interview directly:
+
+👉 ${url}
+
+It takes 12-15 minutes, can be done anytime, and you'll hear back within 48 hours.
+
+#Hiring #${(jd.role||'QA Engineer').replace(/ /g,'')} #Tangoe #Jobs`;
+  navigator.clipboard.writeText(post);
+  event.target.textContent='Copied!';
+  setTimeout(()=>event.target.textContent='Copy LinkedIn post',2000);
 }
 
 function copyEmail(){
