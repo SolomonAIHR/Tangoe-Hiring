@@ -99,6 +99,8 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
   .s-line{width:20px}
   .s-item{font-size:11px}
 }
+/* Prevent text selection during interview */
+.no-select { user-select:none; -webkit-user-select:none; }
 </style>
 </head>
 <body>
@@ -227,7 +229,7 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
   </div>
 
   <!-- STEP 4: Interview -->
-  <div id="s4" style="display:none">
+  <div id="s4" class="no-select" style="display:none" oncontextmenu="return false">
     <div id="cheat-banner" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:10px;padding:10px 16px;font-size:13px;color:var(--amber);margin-bottom:12px;display:flex;align-items:center;gap:8px"></div>
     <div class="card">
       <div class="card-title" id="int-label">QA Engineer Interview · Tangoe</div>
@@ -694,17 +696,37 @@ function startIntroRecording(){
   introChunks = [];
   introSeconds = 0;
   
-  try {
-    introRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
-  } catch(e) {
-    introRecorder = new MediaRecorder(stream);
-  }
+  // Get audio stream separately and combine with video
+  navigator.mediaDevices.getUserMedia({audio:true})
+    .then(audioStream => {
+      const audioTrack = audioStream.getAudioTracks()[0];
+      const combinedStream = new MediaStream([...stream.getVideoTracks(), audioTrack]);
+      
+      try {
+        introRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm;codecs=vp8,opus' });
+      } catch(e) {
+        try { introRecorder = new MediaRecorder(combinedStream); }
+        catch(e2) { introRecorder = new MediaRecorder(stream); }
+      }
+      _startRecording();
+    })
+    .catch(e => {
+      // No audio available - record video only
+      try { introRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' }); }
+      catch(e2) { introRecorder = new MediaRecorder(stream); }
+      _startRecording();
+    });
+}
+
+function _startRecording(){
   
   introRecorder.ondataavailable = e => { if(e.data.size > 0) introChunks.push(e.data); };
   introRecorder.onstop = () => {
     introBlob = new Blob(introChunks, { type: 'video/webm' });
     const url = URL.createObjectURL(introBlob);
-    document.getElementById('intro-video').src = url;
+    const introVid = document.getElementById('intro-video');
+    introVid.src = url;
+    introVid.controls = true;
     document.getElementById('intro-playback').style.display = 'block';
     document.getElementById('intro-preview').style.display = 'none';
     document.getElementById('intro-rec-badge').style.display = 'none';
@@ -722,6 +744,8 @@ function startIntroRecording(){
   
   introRecorder.start(1000);
   
+  // Keep camera preview visible during recording
+  document.getElementById('intro-preview').style.display = 'block';
   document.getElementById('intro-start-btn').style.display = 'none';
   document.getElementById('intro-stop-btn').style.display = 'inline-block';
   document.getElementById('intro-rec-badge').style.display = 'block';
@@ -733,15 +757,8 @@ function startIntroRecording(){
     const m = Math.floor(introSeconds/60);
     const s = introSeconds % 60;
     document.getElementById('intro-timer').textContent = m + ':' + String(s).padStart(2,'0');
-    
-    // Auto-stop at max
-    if(introSeconds >= MAX_INTRO_SECONDS){
-      stopIntroRecording();
-    }
-    
-    // Show proceed button at min
-    if(introSeconds === MIN_INTRO_SECONDS && introRecorder && introRecorder.state === 'recording'){
-      // Visual cue that minimum reached
+    if(introSeconds >= MAX_INTRO_SECONDS){ stopIntroRecording(); }
+    if(introSeconds === MIN_INTRO_SECONDS){
       document.getElementById('intro-timer').style.background = 'rgba(22,163,74,.8)';
     }
   }, 1000);
@@ -769,33 +786,38 @@ function redoIntro(){
   document.getElementById('intro-rec-badge').style.display = 'none';
 }
 
-function proceedToInterview(){
-  // Move to AI interview (step 4)
-  setStep(5);
-  
-  // Mirror stream to interview camera
+async function proceedToInterview(){
+  setStep(4);
   if(stream){
-    document.getElementById('cam-video2').srcObject = stream;
-    document.getElementById('cam-status2').style.display='block';
+    const v2=document.getElementById("cam-video2");
+    if(v2) v2.srcObject=stream;
+    const cs=document.getElementById("cam-status2");
+    if(cs) cs.style.display="block";
     startPhotoCapture();
   }
-  
-  // Build question dots
-  const dots = document.getElementById('q-dots');
-  dots.innerHTML = Array(TOTAL_Q).fill('<div class="q-dot"></div>').join('');
-  
-  // Init typing tracker
+  const dots=document.getElementById("q-dots");
+  if(dots) dots.innerHTML=Array(TOTAL_Q).fill("<div class=\"q-dot\"></div>").join("");
   initTypingTracker();
-  
-  // Start interview
-  const initMsg = "Candidate: "+cur.name+" | Role: "+ROLE+" | Experience: "+cur.yoe+" | Total IT exp: "+cur.exp+" | Skills & tools: "+cur.skills+" | Location: "+cur.location;
-  chat.push({role:'user',content:initMsg});
-  callClaude().then(reply => {
-    chat.push({role:'assistant',content:reply});
+  await new Promise(r=>setTimeout(r,400));
+  const chatArea=document.getElementById("chat-area");
+  if(!chatArea){console.error("chat-area not found");return;}
+  const think=document.createElement("div");
+  think.className="msg msg-ai";
+  think.innerHTML="<span class=\"spin\" style=\"border-top-color:#999\"></span> Starting interview...";
+  chatArea.appendChild(think);
+  const initMsg="Candidate: "+cur.name+" | Role: "+ROLE+" | Exp: "+(cur.yoe||"")+" | IT exp: "+(cur.exp||"")+" | Skills: "+(cur.skills||"")+" | Location: "+(cur.location||"");
+  chat.push({role:"user",content:initMsg});
+  try{
+    const reply=await callClaude();
+    think.remove();
+    if(reply.trimStart().startsWith("DONE")){ await finish(reply); return; }
+    chat.push({role:"assistant",content:reply});
     tx.push({q:reply,a:null});
     addBubble(reply,false);
     setQLabel(1);
-  });
+  }catch(e){
+    think.textContent="Error starting interview: "+e.message;
+  }
 }
 // ─────────────────────────────────────────────────────────────────────────
 </script>
