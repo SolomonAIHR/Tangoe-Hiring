@@ -443,9 +443,10 @@ function goCamera(){
 
 async function startCamera(){
   try{
+    // Request both video AND audio from the start
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-      audio: false
+      audio: true
     });
     document.getElementById('cam-video').srcObject = stream;
     document.getElementById('cam-overlay').style.display='none';
@@ -720,27 +721,15 @@ function startIntroRecording(){
   
   introChunks = [];
   introSeconds = 0;
-  
-  // Get audio stream separately and combine with video
-  navigator.mediaDevices.getUserMedia({audio:true})
-    .then(audioStream => {
-      const audioTrack = audioStream.getAudioTracks()[0];
-      const combinedStream = new MediaStream([...stream.getVideoTracks(), audioTrack]);
-      
-      try {
-        introRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm;codecs=vp8,opus' });
-      } catch(e) {
-        try { introRecorder = new MediaRecorder(combinedStream); }
-        catch(e2) { introRecorder = new MediaRecorder(stream); }
-      }
-      _startRecording();
-    })
-    .catch(e => {
-      // No audio available - record video only
-      try { introRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' }); }
-      catch(e2) { introRecorder = new MediaRecorder(stream); }
-      _startRecording();
-    });
+
+  // Stream already has audio from startCamera — use it directly
+  try {
+    introRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
+  } catch(e) {
+    try { introRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' }); }
+    catch(e2) { introRecorder = new MediaRecorder(stream); }
+  }
+  _startRecording();
 }
 
 function _startRecording(){
