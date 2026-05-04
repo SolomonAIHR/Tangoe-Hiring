@@ -75,7 +75,7 @@ async function saveAndTest(){
   if(!key.startsWith('sk-ant')){st.className='status err';st.style.display='block';st.textContent='Key must start with sk-ant-api03-...';return;}
   st.className='status';st.style.display='block';st.textContent='Testing API key...';
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{
+    const r=await fetch('/api/chat',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'Hi'}]})
@@ -91,10 +91,10 @@ async function saveAndTest(){
         await fetch(fs,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},
           body:JSON.stringify({_subject:'Tangoe Hiring - Setup test',message:'Email notifications are working correctly for Tangoe Hiring system.',_replyto:'rufus.solomon@tangoe.com'})});
         st.className='status ok';
-        st.innerHTML='All set! Check rufus.solomon@tangoe.com for a test email.<br/><br/><a href="/Tangoe-Hiring/admin.html" style="color:#22c97a;font-weight:600">Go to Admin Panel →</a>';
+        st.innerHTML='All set! Check rufus.solomon@tangoe.com for a test email.<br/><br/><a href="/admin.html" style="color:#22c97a;font-weight:600">Go to Admin Panel →</a>';
       } else {
         st.className='status ok';
-        st.innerHTML='API key works! Add Formspree URL to enable emails.<br/><br/><a href="/Tangoe-Hiring/admin.html" style="color:#22c97a;font-weight:600">Go to Admin Panel →</a>';
+        st.innerHTML='API key works! Add Formspree URL to enable emails.<br/><br/><a href="/admin.html" style="color:#22c97a;font-weight:600">Go to Admin Panel →</a>';
       }
     } else {
       st.className='status err';st.textContent='API error: '+(d.error?.message||JSON.stringify(d));

@@ -295,10 +295,10 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
 </div>
 
 <script>
-const API = "https://api.anthropic.com/v1/messages";
+const API = "/api/chat"; // Secure proxy - key never in browser
 const MODEL = "claude-haiku-4-5-20251001";
 // API key is never stored in code — loaded from encrypted session only
-const API_KEY = "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";
+const API_KEY = ''; // Handled by server proxy // Key is on Vercel server - not needed here
 
 
 // Load config from URL
@@ -568,7 +568,7 @@ async function callClaude(cheatCtx){
   try{
     const r=await fetch(API,{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01'},
       body:JSON.stringify({model:MODEL,max_tokens:600,system:buildSystem(cheatCtx),messages:chat})
     });
     const d=await r.json();
