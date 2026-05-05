@@ -591,6 +591,28 @@ function scrollChat(){const c=document.getElementById('chat-area');c.scrollTop=c
 function setQLabel(n){document.getElementById('q-label').textContent=n>TOTAL_Q?'Wrapping up…':`Question ${Math.min(n,TOTAL_Q)} of ${TOTAL_Q}`;}
 function updateDots(n){document.querySelectorAll('.q-dot').forEach((d,i)=>d.classList.toggle('done',i<n));}
 
+// ── CLOUDINARY CONFIG ────────────────────────────────────────────────────
+const CLOUDINARY_CLOUD = 'db4lc7gjf';
+const CLOUDINARY_PRESET = 'fltxxeij';
+
+async function uploadVideoToCloudinary(blob){
+  try{
+    const fd = new FormData();
+    fd.append('file', blob, 'intro.webm');
+    fd.append('upload_preset', CLOUDINARY_PRESET);
+    fd.append('resource_type', 'video');
+    fd.append('folder', 'tangoe-interviews');
+    const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/video/upload`, {
+      method: 'POST', body: fd
+    });
+    const d = await r.json();
+    return d.secure_url || null;
+  }catch(e){
+    console.warn('Cloudinary upload failed:', e);
+    return null;
+  }
+}
+
 // ── VIDEO SELF INTRODUCTION ───────────────────────────────────────────────
 let introRecorder=null,introChunks=[],introBlob=null,introTimerInterval=null,introSeconds=0;
 const MIN_INTRO_SECONDS=120;
@@ -664,6 +686,17 @@ function redoIntro(){
 }
 
 async function proceedToInterview(){
+  // Upload intro video to Cloudinary before starting interview
+  if(introBlob){
+    const btn=document.getElementById("intro-proceed-btn");
+    btn.disabled=true;
+    btn.innerHTML="<span class="spin"></span> Uploading video...";
+    cur.introVideoUrl = await uploadVideoToCloudinary(introBlob);
+    btn.innerHTML = cur.introVideoUrl
+      ? "✅ Video uploaded! Starting..."
+      : "⚠️ Upload failed. Starting anyway...";
+    await new Promise(r=>setTimeout(r,800));
+  }
   setStep(4);
   if(stream){
     const v2=document.getElementById('cam-video2');
