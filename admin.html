@@ -15,7 +15,6 @@
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 .nav{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid var(--border);background:var(--surface)}
 .logo{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.5px;display:flex;align-items:center;gap:10px}
-.logo-dot{width:8px;height:8px;background:var(--accent);border-radius:50%;display:inline-block}
 .nav-tag{font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:3px 10px;color:var(--muted)}
 .wrap{max-width:900px;margin:0 auto;padding:40px 24px}
 .page-title{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;margin-bottom:6px}
@@ -34,14 +33,11 @@ textarea{resize:vertical}
 .btn-primary:hover{opacity:.88;transform:translateY(-1px)}
 .btn-out{background:transparent;border:1px solid var(--border);color:var(--text)}
 .btn-out:hover{border-color:var(--accent);color:var(--accent)}
-.btn-green{background:var(--green);color:var(--ink);font-weight:600}
-.btn-green:hover{opacity:.88}
-.link-box{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-top:16px;display:none}
-.link-url{font-family:monospace;font-size:13px;color:var(--accent);word-break:break-all;margin-bottom:12px}
-.link-actions{display:flex;gap:8px}
+.link-box{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-top:16px}
+.link-url{font-family:monospace;font-size:12px;color:var(--accent);word-break:break-all;margin-bottom:12px;background:var(--bg);padding:10px;border-radius:6px;border:1px solid var(--border)}
+.link-actions{display:flex;gap:8px;flex-wrap:wrap}
 .copy-btn{padding:7px 16px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif}
 .copy-btn:hover{border-color:var(--accent);color:var(--accent)}
-.jd-preview{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;font-size:13px;color:var(--muted);line-height:1.7;max-height:200px;overflow-y:auto;margin-top:12px;display:none;white-space:pre-wrap}
 .step-indicator{display:flex;align-items:center;gap:0;margin-bottom:32px}
 .step{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 .step.active{color:var(--accent);font-weight:500}
@@ -54,12 +50,12 @@ textarea{resize:vertical}
 .full{grid-column:1/-1}
 .saved-jds{margin-top:32px}
 .saved-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:600;margin-bottom:14px;color:var(--text)}
-.jd-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.jd-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .jd-name{font-weight:500;font-size:14px}
 .jd-meta{font-size:12px;color:var(--muted);margin-top:2px}
 .jd-actions{display:flex;gap:8px}
 .tag{display:inline-block;font-size:11px;padding:3px 10px;border-radius:999px;font-weight:500;background:rgba(79,142,255,.12);color:var(--accent);border:1px solid rgba(79,142,255,.2)}
-.empty-jd{text-align:center;padding:40px;color:var(--muted);font-size:14px}
+.url-note{font-size:11px;color:var(--muted);margin-top:8px;padding:8px 12px;background:rgba(34,201,122,.06);border:1px solid rgba(34,201,122,.15);border-radius:6px}
 </style>
 </head>
 <body>
@@ -84,21 +80,13 @@ textarea{resize:vertical}
     <div class="step" id="st3"><div class="step-num">3</div>Generate Link</div>
   </div>
 
-  <!-- STEP 1: Load JD -->
+  <!-- STEP 1 -->
   <div id="step1">
     <div class="card">
       <div class="card-title">Job Description</div>
       <div class="card-sub">Paste the full JD — Claude will use it to generate role-specific screening questions.</div>
       <div class="fl"><label>Role title</label><input type="text" id="jd-role" placeholder="e.g. QA Engineer" value="QA Engineer"/></div>
-      <div class="fl"><label>Paste Job Description</label><textarea id="jd-text" rows="12" placeholder="Paste the full job description here...
-
-Example:
-We are looking for a QA Engineer to join our team at Tangoe...
-Requirements:
-- 3+ years of QA experience
-- Experience with Selenium, Cypress or similar tools
-- Strong understanding of SDLC and Agile methodology
-..."></textarea></div>
+      <div class="fl"><label>Paste Job Description</label><textarea id="jd-text" rows="12" placeholder="Paste the full job description here..."></textarea></div>
       <div style="display:flex;gap:10px;margin-top:4px">
         <button class="btn btn-primary" onclick="saveJD()">Save JD & Continue →</button>
         <button class="btn btn-out" onclick="loadSampleJD()">Load sample QA JD</button>
@@ -106,7 +94,7 @@ Requirements:
     </div>
   </div>
 
-  <!-- STEP 2: Configure -->
+  <!-- STEP 2 -->
   <div id="step2" style="display:none">
     <div class="grid">
       <div class="card">
@@ -139,21 +127,9 @@ Requirements:
       <div class="card">
         <div class="card-title">Proctoring Settings</div>
         <div class="card-sub">Camera and anti-cheat settings for this interview.</div>
-        <div class="fl">
-          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-            <input type="checkbox" id="cfg-camera" checked style="width:auto;margin:0"/> Require webcam proctoring
-          </label>
-        </div>
-        <div class="fl">
-          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-            <input type="checkbox" id="cfg-paste" checked style="width:auto;margin:0"/> Detect copy-paste answers
-          </label>
-        </div>
-        <div class="fl">
-          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-            <input type="checkbox" id="cfg-tab" checked style="width:auto;margin:0"/> Detect tab switching
-          </label>
-        </div>
+        <div class="fl"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="cfg-camera" checked style="width:auto;margin:0"/> Require webcam proctoring</label></div>
+        <div class="fl"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="cfg-paste" checked style="width:auto;margin:0"/> Detect copy-paste answers</label></div>
+        <div class="fl"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="cfg-tab" checked style="width:auto;margin:0"/> Detect tab switching</label></div>
         <div class="fl"><label>Photo capture interval</label>
           <select id="cfg-photo">
             <option value="30">Every 30 seconds</option>
@@ -186,41 +162,35 @@ Requirements:
     </div>
   </div>
 
-  <!-- STEP 3: Link generated -->
+  <!-- STEP 3 -->
   <div id="step3" style="display:none">
     <div class="card">
       <div class="card-title">✅ Interview link generated</div>
-      <div class="card-sub">Share this link with your QA Engineer candidate. It opens directly into their proctored AI interview.</div>
+      <div class="card-sub">Share this link with your candidate. It works on any device — the full JD is embedded in the link.</div>
 
-      <div class="link-box" id="link-box" style="display:block">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Full interview link (copy this)</div>
-        <div class="link-url" id="link-url" style="font-size:12px;word-break:break-all"></div>
-        <div class="link-actions" style="margin-top:10px">
-          <button class="copy-btn" onclick="copyLink()">Copy link</button>
-          <button class="copy-btn" onclick="copyEmail()">Copy email invite</button>
-          <button class="copy-btn" onclick="copyLinkedIn()">Copy LinkedIn post</button>
+      <div class="link-box">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Full interview link (copy this)</div>
+        <div class="link-url" id="link-url"></div>
+        <div class="url-note">✓ Works on any device — JD is embedded in the URL. No localStorage dependency.</div>
+        <div class="link-actions" style="margin-top:12px">
+          <button class="copy-btn" onclick="copyLink(event)">Copy link</button>
+          <button class="copy-btn" onclick="copyEmail(event)">Copy email invite</button>
+          <button class="copy-btn" onclick="copyLinkedIn(event)">Copy LinkedIn post</button>
           <a id="test-link" href="#" target="_blank" class="copy-btn" style="text-decoration:none">Test it →</a>
         </div>
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Works on any device — no setup needed for candidates</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Works on any device — no setup needed for candidates</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <span style="font-size:12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);border-radius:6px;padding:3px 10px">✓ LinkedIn</span>
-            <span style="font-size:12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);border-radius:6px;padding:3px 10px">✓ WhatsApp</span>
-            <span style="font-size:12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);border-radius:6px;padding:3px 10px">✓ Email</span>
-            <span style="font-size:12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);border-radius:6px;padding:3px 10px">✓ SMS</span>
-            <span style="font-size:12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);border-radius:6px;padding:3px 10px">✓ QR Code</span>
-            <span style="font-size:12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);border-radius:6px;padding:3px 10px">✓ ADP email</span>
+            <span style="font-size:12px;color:var(--green);padding:3px 10px;border:1px solid rgba(34,201,122,.3);border-radius:6px">✓ LinkedIn</span>
+            <span style="font-size:12px;color:var(--green);padding:3px 10px;border:1px solid rgba(34,201,122,.3);border-radius:6px">✓ WhatsApp</span>
+            <span style="font-size:12px;color:var(--green);padding:3px 10px;border:1px solid rgba(34,201,122,.3);border-radius:6px">✓ Email</span>
+            <span style="font-size:12px;color:var(--green);padding:3px 10px;border:1px solid rgba(34,201,122,.3);border-radius:6px">✓ SMS</span>
           </div>
         </div>
       </div>
 
       <div class="notice" style="margin-top:20px">
-        📋 <strong>What happens next:</strong> Candidate opens the link → grants camera access → completes 6 AI questions based on your JD → you receive a full report by email + results appear in your dashboard automatically.
-      </div>
-
-      <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
-        <div class="card-sub">JD loaded for this interview:</div>
-        <div class="jd-preview" id="jd-preview-final" style="display:block"></div>
+        📋 <strong>What happens next:</strong> Candidate opens link → grants camera → completes AI interview based on your JD → results appear in dashboard.
       </div>
 
       <div style="display:flex;gap:10px;margin-top:20px">
@@ -231,13 +201,14 @@ Requirements:
   </div>
 
   <!-- SAVED JDs -->
-  <div class="saved-jds" id="saved-section">
+  <div class="saved-jds" id="saved-section" style="display:none">
     <div class="saved-title">Active interview links</div>
     <div id="saved-list"></div>
   </div>
 </div>
 
 <script>
+// ✅ FIXED: No more /Tangoe-Hiring in URL
 const SITE_URL = window.location.origin;
 
 function loadSampleJD(){
@@ -257,7 +228,6 @@ Key Responsibilities:
 - Perform regression, integration, smoke, and UAT testing
 - Identify, document, and track defects using JIRA or similar tools
 - Participate in sprint planning and retrospectives as a QA voice
-- Mentor junior QA team members
 
 Requirements:
 - 3-5 years of QA experience in a SaaS or enterprise software environment
@@ -265,13 +235,7 @@ Requirements:
 - Experience with API testing tools (Postman, REST Assured)
 - Familiarity with CI/CD pipelines (Jenkins, GitHub Actions)
 - Good understanding of Agile/Scrum methodology
-- Experience with SQL for database validation
-- Excellent communication and documentation skills
-
-Nice to have:
-- Experience with performance testing (JMeter, k6)
-- Knowledge of cloud platforms (AWS, Azure)
-- ISTQB certification`;
+- Experience with SQL for database validation`;
 }
 
 function saveJD(){
@@ -287,6 +251,7 @@ function saveJD(){
 
 function generateLink(){
   const jd = JSON.parse(localStorage.getItem('active_jd')||'{}');
+
   const config = {
     role: jd.role,
     jd: jd.text,
@@ -304,22 +269,29 @@ function generateLink(){
     id: Date.now()
   };
 
-  // Save config
+  // Save to localStorage for dashboard history
   const configs = JSON.parse(localStorage.getItem('interview_configs')||'[]');
   configs.unshift(config);
-  localStorage.setItem('interview_configs', JSON.stringify(configs));
-  localStorage.setItem('current_config_id', config.id);
+  localStorage.setItem('interview_configs', JSON.stringify(configs.slice(0,50)));
 
-  // Store config by ID for interview page to read
-  localStorage.setItem('config_'+config.id, JSON.stringify(config));
+  // ✅ KEY FIX: Encode FULL config into URL so ANY device can read it
+  // This means candidates on their own phones/laptops get the full JD
+  const payload = btoa(unescape(encodeURIComponent(JSON.stringify({
+    role: config.role,
+    jd: config.jd,
+    questions: config.questions,
+    focus: config.focus,
+    level: config.level,
+    camera: config.camera,
+    pasteDetect: config.pasteDetect,
+    tabDetect: config.tabDetect,
+    photoInterval: config.photoInterval
+  }))));
 
-  // Generate short clean URL - store config in localStorage with short ID
-  const shortId = config.role.toLowerCase().replace(/[^a-z0-9]/g,'-').substring(0,15) + '-' + String(config.id).slice(-4);
-  localStorage.setItem('jd_'+shortId, JSON.stringify(config));
-  const url = `${SITE_URL}/interview.html?id=${shortId}&role=${encodeURIComponent(config.role)}&q=${config.questions}&level=${config.level}`;
+  const url = `${SITE_URL}/interview.html?cfg64=${encodeURIComponent(payload)}`;
+
   document.getElementById('link-url').textContent = url;
   document.getElementById('test-link').href = url;
-  document.getElementById('jd-preview-final').textContent = jd.text;
   goStep(3);
   renderSaved();
 }
@@ -334,55 +306,30 @@ function goStep(n){
   });
 }
 
-function copyLink(){
-  const url = document.getElementById('link-url').textContent;
-  navigator.clipboard.writeText(url);
-  event.target.textContent='Copied!';
-  setTimeout(()=>event.target.textContent='Copy link',2000);
+function getCurrentUrl(){
+  return document.getElementById('link-url').textContent;
 }
 
-function copyLinkedIn(){
-  const url = document.getElementById('link-url').textContent;
+function copyLink(e){
+  navigator.clipboard.writeText(getCurrentUrl());
+  e.target.textContent='Copied!';
+  setTimeout(()=>e.target.textContent='Copy link',2000);
+}
+
+function copyLinkedIn(e){
   const jd = JSON.parse(localStorage.getItem('active_jd')||'{}');
-  const post = `We're hiring a ${jd.role||'QA Engineer'} at Tangoe! 🚀
-
-If you're interested, skip the queue and complete our AI-powered screening interview directly:
-
-👉 ${url}
-
-It takes 12-15 minutes, can be done anytime, and you'll hear back within 48 hours.
-
-#Hiring #${(jd.role||'QA Engineer').replace(/ /g,'')} #Tangoe #Jobs`;
+  const post = `We're hiring a ${jd.role||'QA Engineer'} at Tangoe! 🚀\n\nIf you're interested, complete our AI-powered screening interview directly:\n\n👉 ${getCurrentUrl()}\n\nIt takes 12-15 minutes, anytime, and you'll hear back within 48 hours.\n\n#Hiring #Tangoe`;
   navigator.clipboard.writeText(post);
-  event.target.textContent='Copied!';
-  setTimeout(()=>event.target.textContent='Copy LinkedIn post',2000);
+  e.target.textContent='Copied!';
+  setTimeout(()=>e.target.textContent='Copy LinkedIn post',2000);
 }
 
-function copyEmail(){
-  const url = document.getElementById('link-url').textContent;
+function copyEmail(e){
   const jd = JSON.parse(localStorage.getItem('active_jd')||'{}');
-  const email = `Subject: Tangoe – QA Engineer Interview Invitation
-
-Dear Candidate,
-
-Thank you for your interest in the ${jd.role||'QA Engineer'} position at Tangoe.
-
-We'd like to invite you to complete our AI-powered initial screening interview. This takes approximately 12-15 minutes and can be done at your convenience.
-
-Please click the link below to begin:
-${url}
-
-Important:
-• Find a quiet, well-lit space
-• Enable your webcam when prompted (required for proctoring)
-• Answer all questions genuinely from your own experience
-• The link expires in 48 hours
-
-Best regards,
-Tangoe Talent Acquisition Team`;
+  const email = `Subject: Tangoe – ${jd.role||'QA Engineer'} Interview Invitation\n\nDear Candidate,\n\nThank you for your interest in the ${jd.role||'QA Engineer'} position at Tangoe.\n\nPlease complete our AI-powered screening interview at your convenience:\n\n${getCurrentUrl()}\n\nThis takes approximately 12-15 minutes. Please enable your webcam when prompted.\n\nBest regards,\nTangoe Talent Acquisition Team`;
   navigator.clipboard.writeText(email);
-  event.target.textContent='Email copied!';
-  setTimeout(()=>event.target.textContent='Copy email invite',2000);
+  e.target.textContent='Email copied!';
+  setTimeout(()=>e.target.textContent='Copy email invite',2000);
 }
 
 function newInterview(){
@@ -393,20 +340,26 @@ function newInterview(){
 
 function renderSaved(){
   const configs = JSON.parse(localStorage.getItem('interview_configs')||'[]');
+  const section = document.getElementById('saved-section');
   const list = document.getElementById('saved-list');
-  document.getElementById('saved-section').style.display = configs.length ? 'block' : 'none';
-  if(!configs.length){list.innerHTML='<div class="empty-jd">No active links yet.</div>';return;}
-  list.innerHTML = configs.map(c=>{
-    const url = `${SITE_URL}/interview.html?cfg=${c.id}`;
+  section.style.display = configs.length ? 'block' : 'none';
+  if(!configs.length){ list.innerHTML=''; return; }
+  list.innerHTML = configs.slice(0,10).map(c=>{
     const d = new Date(c.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
     const candidates = JSON.parse(localStorage.getItem('tangoe_candidates')||'[]').filter(x=>x.configId==c.id).length;
+    // Re-generate URL with cfg64 for saved links
+    const payload = btoa(unescape(encodeURIComponent(JSON.stringify({
+      role:c.role,jd:c.jd,questions:c.questions,focus:c.focus,level:c.level,
+      camera:c.camera,pasteDetect:c.pasteDetect,tabDetect:c.tabDetect,photoInterval:c.photoInterval
+    }))));
+    const url = `${SITE_URL}/interview.html?cfg64=${encodeURIComponent(payload)}`;
     return `<div class="jd-row">
       <div>
         <div class="jd-name">${c.role} <span class="tag">${c.level}</span></div>
-        <div class="jd-meta">Created ${d} · ${candidates} candidate${candidates!==1?'s':''} completed · ${c.questions} questions · ${c.focus}</div>
+        <div class="jd-meta">Created ${d} · ${candidates} candidate${candidates!==1?'s':''} · ${c.questions} questions</div>
       </div>
       <div class="jd-actions">
-        <button class="copy-btn" onclick="navigator.clipboard.writeText('${url}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',2000)">Copy link</button>
+        <button class="copy-btn" onclick="navigator.clipboard.writeText('${url.replace(/'/g,"\\'")}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',2000)">Copy link</button>
         <a href="${url}" target="_blank" class="copy-btn" style="text-decoration:none">Open →</a>
       </div>
     </div>`;
