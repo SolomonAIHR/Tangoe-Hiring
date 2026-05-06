@@ -424,14 +424,33 @@ async function generateLink(){
   document.getElementById('test-link').href = url;
   goStep(3);
   renderSaved();
-  // Auto-generate QR code
+  // Auto-generate QR — only works well with short URLs
   setTimeout(()=>{
     const qrDiv = document.getElementById('qr-code');
-    if(qrDiv){ qrDiv.innerHTML=''; new QRCode(qrDiv,{text:url,width:180,height:180,colorDark:'#0a0d14',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H}); }
-    document.getElementById('qr-panel').style.display='block';
-    const qrBtn = document.querySelector('.copy-btn[onclick="toggleQR()"]');
-    if(qrBtn) qrBtn.textContent='✕ Hide QR';
-  }, 300);
+    if(!qrDiv) return;
+    qrDiv.innerHTML='';
+    // Check URL length — QR codes work best under 300 chars
+    if(url.length > 500){
+      qrDiv.innerHTML='<div style="padding:20px;text-align:center;color:#6b7394;font-size:12px;width:180px">⚠️ URL too long for QR.<br/>Short link pending.</div>';
+      document.getElementById('qr-panel').style.display='block';
+      return;
+    }
+    try{
+      new QRCode(qrDiv,{
+        text: url,
+        width: 180,
+        height: 180,
+        colorDark: '#0a0d14',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+      document.getElementById('qr-panel').style.display='block';
+      const qrBtn = document.querySelector('.copy-btn[onclick="toggleQR()"]');
+      if(qrBtn) qrBtn.textContent='✕ Hide QR';
+    }catch(e){
+      qrDiv.innerHTML='<div style="padding:20px;text-align:center;color:#ef4444;font-size:12px;width:180px">QR generation failed</div>';
+    }
+  }, 400);
 }
 
 function goStep(n){
@@ -486,14 +505,22 @@ let qrInstance = null;
 function generateQR(url){
   const qrDiv = document.getElementById('qr-code');
   qrDiv.innerHTML = '';
-  qrInstance = new QRCode(qrDiv, {
-    text: url,
-    width: 180,
-    height: 180,
-    colorDark: '#0a0d14',
-    colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.H
-  });
+  if(!url || url.length > 500){
+    qrDiv.innerHTML='<div style="padding:20px;text-align:center;color:#ef4444;font-size:12px;width:180px">⚠️ URL too long for QR.<br/>Use short link for QR.</div>';
+    return;
+  }
+  try{
+    qrInstance = new QRCode(qrDiv, {
+      text: url,
+      width: 200,
+      height: 200,
+      colorDark: '#0a0d14',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }catch(e){
+    qrDiv.innerHTML='<div style="padding:20px;text-align:center;color:#ef4444;font-size:12px">QR failed: '+e.message+'</div>';
+  }
 }
 
 function toggleQR(){
