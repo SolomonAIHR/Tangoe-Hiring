@@ -330,18 +330,27 @@ async function loadConfig(){
   };
 }
 
-// Block page render until config is loaded
-document.addEventListener('DOMContentLoaded', async () => {
+
+
+// All globals set after config loads (defaults shown until API returns)
+// Config-derived constants (read lazily from config object)
+function getTOTAL_Q(){ return parseInt(config.questions)||6; }
+function getROLE(){ return config.role||'QA Engineer'; }
+function getJD(){ return config.jd||''; }
+function getPHOTO_INTERVAL(){ return (parseInt(config.photoInterval)||60)*1000; }
+
+// For backward compat — set after load
+let TOTAL_Q = 6, ROLE = 'QA Engineer', JD = '', PHOTO_INTERVAL = 60000;
+(async()=>{
   await loadConfig();
-  initPage();
-});
-
-function initPage(){
-
-const TOTAL_Q = parseInt(config.questions)||6;
-const ROLE = config.role||'QA Engineer';
-const JD = config.jd||'';
-const PHOTO_INTERVAL = (parseInt(config.photoInterval)||60)*1000;
+  TOTAL_Q = getTOTAL_Q();
+  ROLE = getROLE();
+  JD = getJD();
+  PHOTO_INTERVAL = getPHOTO_INTERVAL();
+  document.getElementById('s1-title').textContent = ROLE+' · Tangoe';
+  const il=document.getElementById('int-label');
+  if(il) il.textContent = ROLE+' Interview · Tangoe';
+})();
 
 // State
 let chat=[], tx=[], qCount=0, cur={};
@@ -481,7 +490,7 @@ function goBackToDetails(){
   setStep(1);
 }
 
-function startCamera(){
+async function startCamera(){
   try{
     stream=await navigator.mediaDevices.getUserMedia({
       video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},
@@ -1035,11 +1044,11 @@ async function proceedToInterview(){
   if(introBlob){
     const btn=document.getElementById("intro-proceed-btn");
     btn.disabled=true;
-    btn.innerHTML="<span class="spin"></span> Uploading video...";
+    btn.innerHTML='<span class="spin"></span> Uploading video...';
     cur.introVideoUrl = await uploadVideoToCloudinary(introBlob);
     btn.innerHTML = cur.introVideoUrl
-      ? "✅ Video uploaded! Starting..."
-      : "⚠️ Upload failed. Starting anyway...";
+      ? '✅ Video uploaded! Starting...'
+      : '⚠️ Upload failed. Starting anyway...';
     await new Promise(r=>setTimeout(r,800));
   }
   setStep(4);
@@ -1076,7 +1085,7 @@ async function proceedToInterview(){
     think.textContent='Error starting interview: '+e.message;
   }
 }
-} // end initPage
+
 </script>
 </body>
 </html>
