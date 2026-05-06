@@ -1,15 +1,13 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "*.html", "use": "@vercel/static" },
-    { "src": "api/chat.js", "use": "@vercel/node" }
-  ],
+  "functions": {
+    "api/*.js": {
+      "memory": 512,
+      "maxDuration": 30
+    }
+  },
   "routes": [
-    { "src": "/api/chat", "dest": "/api/chat.js" },
-    { "src": "/admin", "dest": "/admin.html" },
-    { "src": "/interview", "dest": "/interview.html" },
-    { "src": "/dashboard", "dest": "/dashboard.html" },
-    { "src": "/", "dest": "/index.html" },
+    { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/(.*)", "dest": "/$1" }
   ]
 }
