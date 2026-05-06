@@ -223,6 +223,7 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
   <!-- STEP 3: Video Self Introduction -->
   <div id="s3" style="display:none">
     <div class="card">
+      <div id="intro-cam-warning" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;color:#dc2626;margin-bottom:12px;font-weight:500"></div>
       <div class="card-title">🎥 Video self-introduction</div>
       <div class="card-sub">Record a 2–5 minute video introducing yourself. Tell us about your background, experience, and why you are applying for this role.</div>
       <div style="background:#fff8eb;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#92400e">
@@ -461,48 +462,58 @@ document.getElementById('int-label').textContent = ROLE + ' Interview · Tangoe'
 
 // Tab switch detection
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden && qCount>0){
-    tabSwitchCount++;
-    addBubble(`⚠️ Tab switch detected (${tabSwitchCount}x). Please stay on this page during your interview.`,'warn');
+  if(document.hidden){
+    // During interview
+    if(qCount > 0){
+      tabSwitchCount++;
+      addBubble(`⚠️ Tab switch detected (${tabSwitchCount}x). Please stay on this page during your interview.`,'warn');
+    }
+    // During video intro
+    else if(introRecorder && introRecorder.state === 'recording'){
+      tabSwitchCount++;
+      const w = document.getElementById('intro-cam-warning');
+      if(w){
+        w.style.display='block';
+        w.innerHTML=`⚠️ <strong>Tab switch detected (${tabSwitchCount}x)</strong> — Please stay on this page during your video introduction. This has been flagged.`;
+      }
+    }
   }
 });
 
 // ✅ FIX 2: Camera switch-off detection during interview + video intro
+function showCameraWarning(msg){
+  // Show on video intro step
+  const introWarn = document.getElementById('intro-cam-warning');
+  if(introWarn){
+    introWarn.style.display='block';
+    introWarn.innerHTML=msg;
+  }
+  // Show on interview step
+  const banner = document.getElementById('cheat-banner');
+  if(banner){
+    banner.style.display='flex';
+    banner.innerHTML=msg;
+  }
+}
+
 function startCameraMonitor(){
   setInterval(()=>{
     if(!stream) return;
     const videoTrack = stream.getVideoTracks()[0];
     if(!videoTrack) return;
-    // Check if camera was manually disabled
     if(videoTrack.readyState === 'ended' || videoTrack.muted){
-      // Flag it
-      if(qCount > 0){
-        tabSwitchCount++; // reuse tab switch counter
-        addBubble('⚠️ Camera interruption detected. Please keep your camera on throughout the interview.','warn');
-      }
-      // Show warning banner
-      const banner = document.getElementById('cheat-banner');
-      if(banner){
-        banner.style.display='flex';
-        banner.innerHTML='⚠️ <strong>Camera turned off</strong> — This has been flagged. Please re-enable your camera to continue.';
-      }
+      tabSwitchCount++;
+      showCameraWarning('⚠️ <strong>Camera is off</strong> — Please turn your camera back on to continue. This has been flagged in your report.');
     }
-  }, 3000); // check every 3 seconds
+  }, 2000);
 }
 
-// Monitor stream track end events
 function attachCameraEndListener(){
   if(!stream) return;
   stream.getVideoTracks().forEach(track => {
     track.addEventListener('ended', ()=>{
-      if(qCount > 0 || introRecorder){
-        tabSwitchCount++;
-        const banner = document.getElementById('cheat-banner');
-        if(banner){
-          banner.style.display='flex';
-          banner.innerHTML='⚠️ <strong>Camera was turned off</strong> — Flagged in report. Interview will continue but this will be noted.';
-        }
-      }
+      tabSwitchCount++;
+      showCameraWarning('⚠️ <strong>Camera was turned off</strong> — Please re-enable your camera. This has been flagged in your proctoring report.');
     });
   });
 }
@@ -1270,9 +1281,13 @@ async function goBackToCamera(){
 
 function startIntroRecording(){
   if(!stream || stream.getTracks().every(t=>t.readyState==='ended')){
-    alert('Camera not available. Please click "← Back to camera" and re-enable your camera.');
+    const w = document.getElementById('intro-cam-warning');
+    if(w){ w.style.display='block'; w.innerHTML='⚠️ <strong>Camera not available.</strong> Please click "← Back to camera" to re-enable your camera first.'; }
     return;
   }
+  // Clear any previous warning
+  const w = document.getElementById('intro-cam-warning');
+  if(w) w.style.display='none';
   introChunks=[];introSeconds=0;
   try{introRecorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8,opus'});}
   catch(e){try{introRecorder=new MediaRecorder(stream,{mimeType:'video/webm'});}
