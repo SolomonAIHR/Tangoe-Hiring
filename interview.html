@@ -297,6 +297,10 @@ async function loadConfig(){
   if(shortId){
     try{
       const r = await fetch(`/api/get-jd?id=${shortId}`);
+      if(r.status === 404){
+        document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f6fb;font-family:sans-serif;"><div style="text-align:center;padding:40px;max-width:420px"><div style="font-size:48px;margin-bottom:16px">⏰</div><div style="font-size:22px;font-weight:700;color:#0f1117;margin-bottom:8px">Link Expired</div><div style="font-size:15px;color:#6b7280;line-height:1.6">This interview link has expired or is no longer valid.<br/><br/>Please contact the Tangoe HR team to request a new link.</div><div style="margin-top:24px;font-size:13px;color:#9ca3af;">Tangoe AI Hiring System</div></div></div>';
+        return;
+      }
       if(r.ok){ config = await r.json(); return; }
     }catch(e){ console.warn('get-jd error',e); }
   }
@@ -333,6 +337,73 @@ async function loadConfig(){
 
 
 // All globals set after config loads (defaults shown until API returns)
+// ── DEVICE FINGERPRINT ───────────────────────────────────────────────────
+function getDeviceFingerprint(){
+  const components = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + 'x' + screen.height,
+    screen.colorDepth,
+    new Date().getTimezoneOffset(),
+    navigator.hardwareConcurrency||'',
+    navigator.platform||''
+  ];
+  // Simple hash
+  const str = components.join('|');
+  let hash = 0;
+  for(let i=0;i<str.length;i++){
+    hash = ((hash<<5)-hash)+str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+const DEVICE_FINGERPRINT = getDeviceFingerprint();
+
+// ── ELIGIBILITY CHECK ─────────────────────────────────────────────────────
+async function checkEligibility(linkId, email){
+  try{
+    const r = await fetch('/api/check-eligibility',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({linkId, email, fingerprint: DEVICE_FINGERPRINT})
+    });
+    return await r.json();
+  }catch(e){
+    return {eligible:true}; // fail open
+  }
+}
+
+function showBlockedPage(message, reason){
+  const icons = {
+    expired: '⏰',
+    max_uses: '🔒',
+    email_used: '📧',
+    device_used: '💻'
+  };
+  const icon = icons[reason] || '🚫';
+  document.body.innerHTML = `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f6fb;font-family:'DM Sans',sans-serif;">
+      <div style="text-align:center;padding:40px;max-width:440px">
+        <div style="font-size:52px;margin-bottom:16px">${icon}</div>
+        <div style="font-size:22px;font-weight:700;color:#0f1117;margin-bottom:12px">
+          ${reason==='expired'?'Link Expired':
+            reason==='max_uses'?'Link No Longer Active':
+            reason==='email_used'?'Already Completed':
+            reason==='device_used'?'Already Completed':'Not Eligible'}
+        </div>
+        <div style="font-size:15px;color:#6b7280;line-height:1.7;background:#fff;border:1px solid #e2e6f0;border-radius:12px;padding:20px;margin-bottom:20px">
+          ${message}
+        </div>
+        <div style="font-size:12px;color:#9ca3af;">
+          If you believe this is an error, please contact<br/>
+          <strong style="color:#0057ff;">talent@tangoe.com</strong>
+        </div>
+        <div style="margin-top:20px;font-size:11px;color:#d1d5db;">Tangoe AI Hiring System · Device ID: ${DEVICE_FINGERPRINT}</div>
+      </div>
+    </div>`;
+}
+
 // Config-derived constants (read lazily from config object)
 function getTOTAL_Q(){ return parseInt(config.questions)||6; }
 function getROLE(){ return config.role||'QA Engineer'; }
@@ -350,6 +421,16 @@ let TOTAL_Q = 6, ROLE = 'QA Engineer', JD = '', PHOTO_INTERVAL = 60000;
   document.getElementById('s1-title').textContent = ROLE+' · Tangoe';
   const il=document.getElementById('int-label');
   if(il) il.textContent = ROLE+' Interview · Tangoe';
+
+  // ✅ Check device eligibility on page load (before any form shown)
+  const shortId = urlParams.get('id');
+  if(shortId){
+    const check = await checkEligibility(shortId, null);
+    if(!check.eligible){
+      showBlockedPage(check.message || 'This interview link is no longer available.', check.reason);
+      return;
+    }
+  }
 })();
 
 // State
@@ -404,6 +485,20 @@ async function goCamera(){
   if(!exp){alert('Please enter your total years of IT experience.');return;}
   if(!resumeFile){document.getElementById('resume-err').style.display='block';return;}
   else{document.getElementById('resume-err').style.display='none';}
+
+  // ✅ CHECK EMAIL ELIGIBILITY before proceeding
+  const shortId2 = urlParams.get('id');
+  if(shortId2){
+    const eligBtn = document.querySelector('button[onclick="goCamera()"]');
+    if(eligBtn){ eligBtn.disabled=true; eligBtn.textContent='🔍 Verifying eligibility...'; }
+    const eligCheck = await checkEligibility(shortId2, email);
+    if(!eligCheck.eligible){
+      if(eligBtn){ eligBtn.disabled=false; eligBtn.textContent='Continue to camera check →'; }
+      showBlockedPage(eligCheck.message || 'You are not eligible for this interview.', eligCheck.reason);
+      return;
+    }
+    if(eligBtn){ eligBtn.disabled=false; eligBtn.textContent='Continue to camera check →'; }
+  }
 
   // ✅ GPS LOCATION CAPTURE
   const gpsBtn = document.querySelector('button[onclick="goCamera()"]');
@@ -461,6 +556,17 @@ async function goCamera(){
       start:new Date().toISOString()
     };
     setStep(2);
+    // ✅ If stream already active (came back from edit), show camera ready immediately
+    setTimeout(()=>{
+      if(stream && stream.getTracks().some(t=>t.readyState==='live')){
+        const v=document.getElementById('cam-video');
+        if(v) v.srcObject=stream;
+        document.getElementById('cam-overlay').style.display='none';
+        document.getElementById('cam-status').style.display='block';
+        document.getElementById('cam-btn').style.display='none';
+        document.getElementById('cam-ready').style.display='block';
+      }
+    }, 150);
   };
   reader.readAsDataURL(resumeFile);
 }
@@ -485,8 +591,7 @@ async function resetForm(){
 }
 
 function goBackToDetails(){
-  // Stop camera if running
-  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  // ✅ DO NOT stop stream — keep camera alive so it works when returning
   setStep(1);
 }
 
@@ -508,12 +613,19 @@ async function startCamera(){
 
 function startInterview(){
   setStep(3);
-  if(stream){
-    const prev=document.getElementById('intro-preview');
-    prev.srcObject=stream;
-    prev.muted=true;
-    prev.play().catch(e=>{});
-  }
+  // Small delay to let DOM render before attaching stream
+  setTimeout(()=>{
+    if(stream){
+      const prev=document.getElementById('intro-preview');
+      if(prev){
+        prev.srcObject=stream;
+        prev.muted=true;
+        prev.play().catch(e=>console.warn('preview play:',e));
+      }
+    } else {
+      alert('Camera not available. Please go back and enable camera.');
+    }
+  }, 200);
 }
 
 function buildSystem(cheatCtx){
@@ -642,9 +754,36 @@ async function finish(reply){
     completedAt:new Date().toISOString()
   };
 
+  // Save to localStorage (local backup)
   const existing=JSON.parse(localStorage.getItem('tangoe_candidates')||'[]');
   existing.unshift({...result,id:Date.now()});
   localStorage.setItem('tangoe_candidates',JSON.stringify(existing));
+
+  // ✅ Mark link as used (prevent re-use)
+  const usedLinkId = urlParams.get('id');
+  if(usedLinkId){
+    try{
+      await fetch('/api/mark-used',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          linkId: usedLinkId,
+          email: cur.email,
+          fingerprint: DEVICE_FINGERPRINT,
+          candidateName: cur.name
+        })
+      });
+    }catch(e){ console.warn('mark-used failed:',e); }
+  }
+
+  // ✅ Save to Upstash Redis (visible on any device/browser)
+  try{
+    await fetch('/api/save-result',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({...result, id:Date.now()})
+    });
+  }catch(e){ console.warn('save-result failed:',e); }
 
   document.getElementById('done-email').textContent=cur.email;
   setStep(5);
@@ -954,7 +1093,7 @@ async function verifyCompany(name){
   }
 }
 
-function goBackToCamera(){
+async function goBackToCamera(){
   // Stop any recording in progress
   if(introRecorder && introRecorder.state === 'recording'){
     introRecorder.stop();
@@ -962,18 +1101,30 @@ function goBackToCamera(){
   }
   introBlob=null; introSeconds=0;
   setStep(2);
-  // Re-show camera
-  if(stream){
-    document.getElementById('cam-video').srcObject=stream;
+  await new Promise(r=>setTimeout(r,200));
+  // Re-attach or restart camera
+  if(stream && stream.getTracks().some(t=>t.readyState==='live')){
+    const v=document.getElementById('cam-video');
+    if(v){ v.srcObject=stream; }
     document.getElementById('cam-overlay').style.display='none';
     document.getElementById('cam-status').style.display='block';
     document.getElementById('cam-btn').style.display='none';
     document.getElementById('cam-ready').style.display='block';
+  } else {
+    // Stream ended — need to restart camera
+    stream=null;
+    document.getElementById('cam-overlay').style.display='flex';
+    document.getElementById('cam-status').style.display='none';
+    document.getElementById('cam-btn').style.display='block';
+    document.getElementById('cam-ready').style.display='none';
   }
 }
 
 function startIntroRecording(){
-  if(!stream){alert('Camera not available. Please go back and enable camera.');return;}
+  if(!stream || stream.getTracks().every(t=>t.readyState==='ended')){
+    alert('Camera not available. Please click "← Back to camera" and re-enable your camera.');
+    return;
+  }
   introChunks=[];introSeconds=0;
   try{introRecorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8,opus'});}
   catch(e){try{introRecorder=new MediaRecorder(stream,{mimeType:'video/webm'});}
