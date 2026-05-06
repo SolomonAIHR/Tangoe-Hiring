@@ -171,13 +171,41 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 <script>
 let candidates=[], activeCand=null;
+let isLoading = false;
 
-function load(){
-  try{candidates=JSON.parse(localStorage.getItem('tangoe_candidates')||'[]');}catch(e){candidates=[];}
+async function load(){
+  try{
+    // Load from Upstash (any device)
+    const r = await fetch('/api/get-results');
+    if(r.ok){
+      const data = await r.json();
+      if(data.results && data.results.length){
+        candidates = data.results;
+        // Also sync to localStorage as backup
+        localStorage.setItem('tangoe_candidates', JSON.stringify(candidates));
+        return;
+      }
+    }
+  }catch(e){ console.warn('get-results failed, using localStorage:', e); }
+  // Fallback to localStorage
+  try{ candidates = JSON.parse(localStorage.getItem('tangoe_candidates')||'[]'); }
+  catch(e){ candidates = []; }
 }
 
-function render(){
-  load();
+async function render(){
+  if(isLoading) return;
+  isLoading = true;
+  // Show loading state on first load
+  const list = document.getElementById('clist');
+  if(!candidates.length){
+    list.innerHTML = '<div class="empty" style="color:var(--muted);padding:40px;text-align:center">⏳ Loading candidates...</div>';
+  }
+  await load();
+  isLoading = false;
+  renderTable();
+}
+
+function renderTable(){
   const t=candidates.length;
   const strong=candidates.filter(c=>['Strong Yes','Yes'].includes(c.assessment?.verdict)).length;
   const scores=candidates.filter(c=>c.assessment?.score).map(c=>c.assessment.score);
@@ -400,7 +428,7 @@ function rejectCandidate(){
     const existing=JSON.parse(localStorage.getItem('tangoe_candidates')||'[]');
     const idx=existing.findIndex(c=>c.id===activeCand.id);
     if(idx>=0){existing[idx]=activeCand;localStorage.setItem('tangoe_candidates',JSON.stringify(existing));}
-    closeMod();render();
+    closeMod();renderTable();
   }
 }
 
@@ -535,8 +563,10 @@ function downloadCSV(){
   URL.revokeObjectURL(url);
 }
 
+} // end renderTable
+
 render();
-setInterval(render,20000);
+setInterval(render, 30000);
 </script>
 </body>
 </html>
