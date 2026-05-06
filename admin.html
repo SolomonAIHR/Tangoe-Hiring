@@ -57,8 +57,83 @@ textarea{resize:vertical}
 .tag{display:inline-block;font-size:11px;padding:3px 10px;border-radius:999px;font-weight:500;background:rgba(79,142,255,.12);color:var(--accent);border:1px solid rgba(79,142,255,.2)}
 .url-note{font-size:11px;color:var(--muted);margin-top:8px;padding:8px 12px;background:rgba(34,201,122,.06);border:1px solid rgba(34,201,122,.15);border-radius:6px}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
+
+<!-- PIN PROTECTION -->
+<div id="pin-overlay" style="position:fixed;inset:0;background:#0a0d14;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px">
+  <div style="text-align:center">
+    <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#22c97a;margin-bottom:6px">tangoe</div>
+    <div style="font-size:13px;color:#6b7394;">Recruiter Admin Panel · Secure Access</div>
+  </div>
+  <div style="background:#111520;border:1px solid #232840;border-radius:14px;padding:28px;width:100%;max-width:340px">
+    <div style="font-size:14px;color:#e8eaf0;font-weight:600;margin-bottom:6px">Enter Access PIN</div>
+    <div style="font-size:12px;color:#6b7394;margin-bottom:16px">Contact your HR admin for the PIN</div>
+    <input type="password" id="pin-input" placeholder="Enter PIN" maxlength="20"
+      style="width:100%;font-size:18px;letter-spacing:4px;text-align:center;padding:12px;background:#181d2e;border:1px solid #232840;border-radius:8px;color:#e8eaf0;outline:none;font-family:'DM Sans',sans-serif;margin-bottom:12px"
+      onkeydown="if(event.key==='Enter')checkPin()"/>
+    <button onclick="checkPin()" style="width:100%;padding:11px;background:linear-gradient(135deg,#4f8eff,#7c5cfc);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">
+      Access Panel →
+    </button>
+    <div id="pin-error" style="color:#ef4444;font-size:12px;text-align:center;margin-top:10px;display:none">
+      ❌ Incorrect PIN. Please try again.
+    </div>
+  </div>
+  <div style="font-size:11px;color:#404868">Access attempts are logged · Tangoe AI Hiring System</div>
+</div>
+
+<script>
+// PIN check — runs before anything else
+(function(){
+  const ADMIN_PIN = 'TANGOE2024HR'; // Default — change via Vercel env or update here
+  const SESSION_KEY = 'tangoe_admin_auth';
+  const SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 hours
+
+  function checkPin(){
+    const input = document.getElementById('pin-input').value.trim();
+    const stored = sessionStorage.getItem(SESSION_KEY);
+
+    if(input === ADMIN_PIN || input === (window.__ADMIN_PIN||'')){
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({time: Date.now()}));
+      document.getElementById('pin-overlay').style.display='none';
+      logAccess('admin_panel', 'success');
+    } else {
+      document.getElementById('pin-error').style.display='block';
+      document.getElementById('pin-input').value='';
+      document.getElementById('pin-input').style.border='1px solid #ef4444';
+      logAccess('admin_panel', 'failed_pin');
+      setTimeout(()=>{
+        document.getElementById('pin-input').style.border='1px solid #232840';
+      }, 2000);
+    }
+  }
+  window.checkPin = checkPin;
+
+  function logAccess(page, status){
+    try{
+      const logs = JSON.parse(localStorage.getItem('tangoe_access_log')||'[]');
+      logs.unshift({page, status, time: new Date().toISOString(),
+        ua: navigator.userAgent.substring(0,80)});
+      localStorage.setItem('tangoe_access_log', JSON.stringify(logs.slice(0,100)));
+    }catch(e){}
+  }
+
+  // Check existing session
+  const stored = sessionStorage.getItem(SESSION_KEY);
+  if(stored){
+    try{
+      const s = JSON.parse(stored);
+      if(Date.now() - s.time < 8*60*60*1000){
+        document.getElementById('pin-overlay').style.display='none';
+        return;
+      }
+    }catch(e){}
+  }
+  // Show PIN overlay
+  setTimeout(()=>document.getElementById('pin-input').focus(), 300);
+})();
+</script>
 
 <nav class="nav">
   <div class="logo"><img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAB8AZcDASIAAhEBAxEB/8QAHAABAAMBAQEBAQAAAAAAAAAAAAYHCAUEAwIB/8QATxAAAQMDAQQGBAcMCQIHAQAAAQIDBAAFEQYHEiExCBNBUWGBInGRoRQyN3WxsrMVFyM2QlJicnN0gtEWMzRUVpKUosFDUxgkJWTC0vDT/8QAGwEAAgIDAQAAAAAAAAAAAAAAAAQDBgIFBwH/xAA3EQABAwIDBAkDAwQDAQAAAAABAAIDBBEFITEGEkFREyIyYXGBkbHBFKHRNOHwFTVS8TNCcmL/2gAMAwEAAhEDEQA/ANl1Gtp2oXtL6JuF4jISuS2kIY3hlIWohIJ8BnPlUlqvekN8l079sx9omsXmzSk8RldFSSvYbENJHos6ztVamnSjKlagui3ic7wlLQAfAJIA8hVwdHjXF4ut0kabvEtyalMcvxnnTlad0pBQTzI9IEE9xqhqs3o0/KSv5ue+s3ScbjvBc5wWrnFfH1zmbHPW/NaYpSlPLqSUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpXkul0tlqYD90uMSC0TgLkPJbST61EULxzg0XJsF66V5rdcIFyjiTbpsaYyeTjDqXE+0HFemhAcHC4SlKUL1KUpQhKUpQhKUpQhKUpQhKUpQhKUpQhcbUGqtOafcQ3ebzDhOLGUtuOemR37o448arTbXrjSd62fy7dar3GlynHWilpveyQFgns7hVMa7mSp+tb1KmKUp8zXUHeOcBKylKfUAAK4tKPmJuFz3ENppZhJA1gDTccb20Sp7sJvdqsGuzOvE1uHGMJ1sOOZxvFSCBw9RqBUqEGxuq3S1DqaZsrRm03Wtvvm6C/xPC/3fyrs6e1Np/UAc+4t3iTlNjK0NOAqSO8p5geNYwqRbNJsuBr6yPwlLDpmNtkJPxkqO6oHvGCanE5vmFbKbayZ8rWyMFibZXuth0pUK2s68j6KsyS0hEi6SgUxWFchjmtX6I4esnHeQySALlXSoqI6aIyyGwCk96vFqssQy7tcI0JgflvOBIJ7hnmfAVX93236NhuFuIi43Ij8phkJR7VlJ9gNZ41Berpf7ku4Xea7LkKJ9JZ4IHckckjwFc+lnTngqNV7WzvcRTtDR35n8e60Adv1o3uGnbgR3l1Ga99t27aUfWlE2BdYWeay0lxA/yq3vdWcKVj0z0i3afEAblwPkFs/TmpLFqKOXrLdI01KfjpbX6aP1kniPMV1qxHa5821z259ulPRJTRyh1pW6oeHiPA8DWodjmvE6zsq25gbau0PCZCE8A4DycSOwHtHYfKpo5d7Iq04PtAyud0Ug3X/Yqd147zdbbZoKp11nR4UZJALjywkZPIceZ8K9lZ66Ukt9eqLVBLivg7cMupRnhvKWQTjvwAKze7dbdbPFa40NM6YC5Fvurctm0PRVymIhxNRQlPuHCErUUbx7gVAAnwqU1hogEYNWhqzarcpWi7TYbVKdbfMJCbjLBIcUrGNxJ5jlxPPjjvqJs+War1FtWHMeahoBGluPdmro1TtG0hpxxbE+7NuSkfGjxh1rgPcQngk+sioc9t804F4Zsl4WnvUGkn2b5rPPMkkkk8STX8rAzuOi1U+1Va914wGjwv7rSto246PmOpamM3K3E/lvMpUgeaFE+6rFtNzt13hIm2ubHmRl8nGXApPq4dvhWJa7+iNWXfSF3RcLY8ooJHXxlKPVvp7lDv7lcx7q9bOf8AsmaHayZrwKkAt5jUflbGpXO0zeYWobFEvFvXvx5KN5OeaTyKT4ggg+qujTWqvjHte0OabgpXC1Pq/Temk/8ArN3jRnCMhne3nSO8IGT7qrrbXtRds8hzTmm3UicBiXLHHqM/kJ/T7z2evlQEh56Q+uRIdceecO8txxRUpR7yTxNQPm3TYKr4rtKyleYoBvOGpOg/K0NP286ZacKIdqu0oA/HUlDaT6sqz7QK+DG32xlwB+wXRCO0oW2o+wkfTWfKVF0z1XDtPiBN94egWs9MbTdG6gcQxGuqYslZwliWOqWT3DPAn1E1F9tG1FzTz5sGni2q5FIMiQoBSY4PJIHavkePAAjnnhnQgEYIzX9USpRUokk8yTkmgzuIspptqaqWAx2AceI5fnvXSlahv8qWZci+XNx8nPWGWvI9XHh6hWgOjxq66ajs8+33h9cqRblN7khZytxCwrAUe0gpPHtBFUZozR2oNXSXGrLEStDRAdfdVuNN55Anv8ACa0nsp0MzoiyvMGQJU6UoLkvBOEnAO6lI7hk8+81lCHb1+Cn2ZhrHVImz3M7k6H85qZUrn6ivNusFofut1kpjxWRlSjzJ7EgdpPYKqZO363/dHcVp2UIW9jrA+kuY79zGPLephz2t1KuVXidLRuDZn2J/nBXO4sIbUs8kgk1jXWmoJ2p9RSrrPeW5vuK6lBPotN5O6lI7Bj21ruDc4V508i6W54PRZLBcbWBjII7R2HsI7KxYeZqCc6Kr7XTEsha09U3Pjpb3Uo2V6hnac1pb34jqwzJkIYksg+i6hagniOWRnIPhWvKxVpr8ZbV+/MfaJrYepr3btO2WRd7o6WozABVgZUok4CUjtJNewHIqTZOfdp5d89Vpv4ZZrpUqlGNv0M3EIe05IRCKsdYmQFOAd+5jHlvVb9lucG82uPc7bIRIiyEb7bie0f8AB7COypmva7RWSkxKlrCRC+5H84r2UpSsk8lRzVet9L6Yyi73Zlt8DIjt+m6f4BxHrOKrXbPtWehyXtO6WkbjzZKJc5PEoPahvx7Crs5DjxFEuuOOuqddcW44s7ylrUVKUe8k86gfNbIKp4rtM2neYqcbzhqTp+60DP2+2RCyINhuT6exTq0N58gVV52tv8Er/C6alpT3pkpJ9hAqhKVD0z+arh2lxEm++PQLUendsOirusNPS3rU6eGJyAhP+cEp9pFWA04260l1paXG1DKVJOQR3g1hypls52hXrR0tCG3Vy7UVfhYTisgDtLefiK9XA9tSMn/yW2oNrHbwbVNy5j5H49FrOotqfWkOz3A21hhMuWgAvFclthmPvAlIccWQAogEhIySATjFdrT14t9/s8e7Wt8PRZCd5KuRB5FJHYQcgiqq1FFdkpEBlEddzGtAp8SGS4jdU2otKWkYJRuFI5jlUznZZKz11U5kTXQnXj+OGftdT/T+rWbhPbt82C5Akvtl2MvrUPR5KRz6t1BIJHak4OOPKlVbcoE2Poq62SK0hvUZ1I4YiYqOqbCuqClLZT+Qjqt4HnxJ48RSo+lI4XWsONTQ2a6Jzz3cO49/xZSTX2xq3aivj14t90XbH5Ct6Q2WetbWr84DIKSe3mPVVebQtkjmktMP3s35EwNLQjqhF3M7ygM53z391aWqvekN8l079sx9omvXxtsTZe4tg1F0Es4Z1rE6nW3K9llypLs30orWWpDZkzhCIjrf60tdZ8UpGMZH53fUaqzejT8pK/m576zdKsF3AFUTDYWT1ccbxcEi6kf/AIf3f8VI/wBAf/6VKNneyC2aXvDd4mXBd0mMkmOC11bbRII3sZOTg8Mnh3VZtKcETQb2XSIcBoIXiRkeY0zJ9ylZT27yZcjahdUyyrDHVtMA9je4CMeGVKPma1ZUY1roTTeri25d4ajJbTuokMrKHAnuyOY8CDRKwuFgsccw6SvphHEbEG+fHVZBq5djGyqLebcjUOp2nFRHuMSJvFPWJ/7iiOOD2Dt59oqd2HY1ou1zUS3GJVwW2reQiU7vIB7MpAAPnkVYqQEgAAADgAOyo44bG7lpcJ2YMUnSVdjbQa+v4UbToLRKWw2NKWbAGMmGgn24zUI2kbH7FJs0mfpqKbfcGGy4lltZLT2OJTgn0SewjHGrbpUpY0i1lZKjDKWeMsdGPQXHgsNesEeBqX7Hb0ux7RbU+FFLUl0Q3hnAKHCE8fAK3T5VF7gEpuEpKMbofWE47t41/bc4WrlEdT8ZD7ah6woUiDY3XKKeR0E7Xt1aR9lt2s59KD8d7d83j7RVaLSd5IPeM1nTpQfjvbvm8faKpybsLom1H9vd4j3VTUpU32KaXa1RrhlmWjfgwkfCpCSOC8EBKD61EeQNJgXNlzump31ErYmauNl7dC7JNRamhN3F9xq1QXQFNOPpKlupP5SUDHDuJIz76k07YDOQyVQtSx3nQOCXYpbBPrClfRV9gADAGAKU4IW2XRItmKBkYa8Fx53I9slivUdkuenru7arvFVHlNcSM5CgeSkntB7651X/ANKS2NOWS03gIw8xIUwpWOaFpzg+aRj1mqApV7d11lRcVoRQ1ToQbjh4FXv0Wrwtce72F1eUslEpgdwVlK/eEnzq09d3r+j2j7peRguRo6lNA8i4eCB/mIqiejItSdeykg8F29YV5LQasjpIPLa2ZuoSDh2YyhWOwb299KRTDHWjurlhVW9mCuk4tDreWizO+87IfckPuKcedWVuLVzUonJJ9ZNfqHGfmTGYcVpTsh9xLbTaealE4A9tfGp7sAitStqVu64Ahlt15IP5wQQPZnPlSzRc2VEpYfqJ2RX7RA9Srb0Jse05aIDTt9itXe4kbzhd4soP5qUciB3nOfCpJddneiblHLL+mrc3kcFx2QysepSMGpTSngxoFrLq8WGUkUfRtjFvAH1WUNrWg3tE3htLLq5FslAmM8sekkjmhXiOHHtHnUJrTvSPitP7M3nnAN+NKZcbPcSrcPuUazFScrQ12S5zj1CyirCyPskAjuv/AKV+9F+/petdw006EByMv4UyQMFSFnCs9+FY4/pDuq6DwGTWXeju+4ztShtoJAfjPtr8Ru730pFXXtwvq7Ds6nusL3JMvdiNHu3zhR8k73nimIndS54K3YFX7uFmSTSO48hmPeyo3bPrZzVupFsxXs2iEooipTycPJTh788QPD1moGeAyaAADA5CrM6P2kGtRalcus9oOQLWUqCFD0XHjxSD4DG8fKls3uVIY2fFKyxPWefT9gFbOxO2TrXsqjNT0rbceDshDahgoQskpHmOPnWWzzNbfmf2R79mr6KxAeZqWYWAC321EAp4qeIHJoI9N1e/TX4y2r9+Y+0TWjOkXa51x2fFyEhbohyUSHkI4koAIJx24yD6gaznpr8ZbV+/MfaJrapAIwRkGiEbzSFJs1TCqpKiEm29Ye6w1VlbB9bOac1E3Z5rp+5VxcCCDyZeOAlY7geAPkeyvJty0i1pbV3WQWg3bbgkvMIA4NqB9NA8MkEeCsdlQCos2OVdBnwus/8Aph9f2IW5agO3LVrmltHqRCd3LjcCWI6geKBj01j1Dl4kV1dk98XqHQFquDy9+QGepfUeZcR6KifXjPnVF9Iq7quO0RyEFEtW1hDKR2BShvq+lPspqR9mXCv2MYn0WHdNEc32A88/ZVvXX0lp65aovjNotbQU85xUtXBDSBzUo9w9/KuRWj+jPZGYejHr2UD4RcX1DfP/AG2yUgD+IKNLRs3nWVFwfD/r6oRHTU+A/ll69M7F9I22Mj7qNO3eTj01vLUhGfBCTy9ea6tw2UaCmMlv7gtx1EYC47i0KHsOPaKm1Kb3G8l0pmFUTGbgibbwCy3tZ2aytFrRPiPrmWh5e4lxQAWyo8krxwOexQx6h219W0dW2hm/aZuNofSCiUwpAz2Kx6J8jg+VYu9IcFDChwI7jS0rA05KhbRYYyhnBiya7hyI1Vq9HTVjlq1N/R2U4fgVzP4IE8G3wOGP1gMesJq9b3pqDcp6Lkh+Zb7ilHV/C4bvVrUjOd1XMLGexQOOysdRJT0GWzNjL3H47iXW1dyknI94rbFslon22LOaBDchlDqQewKAI+mpITcWK3my1QKindTyZ7puPA/g+65ll01Cts9VycfmXC4Kb6r4VMd6xaUZyUpHAJBPPdAz20rt0qcCytscbYxZoslV70hvkunftmPtE1YVV70hvkunftmPtE14/slJYt+hm/8AJ9llyrN6NPykr+bnvrN1WVWb0aflJX83PfWbpKPtBc0wf9dF/wCgtMUpSn11tK4msdVWXSlt+HXiUGgchppPpOOnuSnt9fIdpro3afHtdrlXKWvcjxWVPOK7kpGT9FY+1pqSfqvUEi7z1qyskMtZ9FlvPooA+nvOTUUkm4Fo8bxgYdGAwXe7Tu7yrD1Lt1v0pa27DAjW5nPouPjrXSO/HxR6uNRGVtM13IUVK1JLRnsbShI9yaiFSXTuhNXX9gSLZY5K46vivO4abV4gqxvDxGaW33uKoZxDEax9mvcTyF/YLzyNY6tfOXdT3gn9GYtP1SK5si5XKT/aLlOe/aSFq+k1O2Ni+u3Mb0WAz+vLH/ANe1OwnWJQpSp1kBAJCQ+4ST3f1eKNx54LI4bicnaY4+N/lVZX1if2xj9qj6wr8OIU24ttYwtCilQ7iDg1+4n9sY/ao+sKwWqb2lt5r+rT6hWdelB+O9u+bx9oqtFNf1afUKzr0oPx3t3zePtFU5N2F0naf+3HxHuqmq+eitESIF+nYG+t5pnPglJV/wDKqGrQvRa/Fa7fvw+zTS8PbVS2aaDiLL8AfZXBSlKdXT1VnSc+T+P84N/VVWba0l0nPk/j/ODf1VVm2k5+0ua7U/r/ACHyrS6M3ygP/uDn1kVb22+1uXXZndm2klTkdAlJA5nqzvH3A1UPRm+UB/8AcHPrIrSS0pWkoUApKhgg8iKliF2WVh2fhE+FOiOjt4eqw3Xe2fX/APozrG3XpSStphzDyUjiW1ApVjxwSfKuptf0kjSGrXIsZ1tcKWDIjIChvNJJ+Iocxg8Ae0eINQ2ljdpVFeyWiqLHJzD9wtvQJkWfCZmwpDciM8gLbdbVlKge0GvvWOtK6z1NpgFFmurrLKjksLwtrPfuq4A+Ixmu3c9reu58ZUdV2RGSoYKozCW1+SuY8qZE4tmrvFtdTGO8jCHcha3rdTvpMaqirhxtJw3kuP8AWpkTN056sAHcQfEk72PAd9UTX6dWt11Trq1OOLO8pajlSj3knma+1vhyrhOZgwY7kiS+sIbbQMlRNLvdvG6puIVsmIVJlI1yA7uA/nFWd0ZbW5K1vKuhSepgxFJzjhvuEAD2BVSPpVyVphafhA+g66+8R4oSgD7Q1P8AZVpBvRulW4Cyhc549dMcTxBcIxug/mgcB5ntqvulZHWqNp2WAdxtyQ0T4qDZH1DU5buxWVumon0WBOjPaNifNw+FRFae6OcFEXZnHkgALmSHnVnt4LKB7ke+sw1qLo7zEStl8JkHK4r7zK/X1hWPcsVhB2lqNk93643/AMTb1CsJQCklJGQRg1lfaRs4v+nr7JVEt0mdbHnVLjvx2y5upJJCFAZII5dx5+A1TSmHsDwrnimFRYjGGvNiNCsy7IdnN7uupYdzudvkQbZDeS+pUhsoU8pJylKQeJGQMnljNaapShjAwWCywzDIsOiLGG5OpVVdJuAiRoWNO3R1kOaghXburBSR7d0+VZvrSnSYmIY2fNRSRvypzaUjtwkFRPu99ZrpaftKj7U7v15tyF/H/VlobotSFL0ndohJw1cN8eG82n/6++qX2iPmTr6/vlWd64PY9QWQPcKubossKTpe8ST8VyeGx60tpJ+sKpfX7Jj66vzBBG5cXxx/XJ/5r1//ABhSYkXf0imv3/NvsuHUgs+tNV2e3N26132XFiNFRQ0gp3U5JUcZHaST51H6mOmNmurNR2Vm72qLFciPFQQpclKSd1RSeHZxBqJoN8loqRlS99qa+9b/AK3vbyXx++Prr/E8/wD2/wAqffH11/ief/t/lXZ+8zr3+4wv9Wmn3mde/wBxhf6tNZWk71svp8Y5SerlxjtG10QQdTz+Pin+VRUkkkkkknJJ7asP7zOvf7jC/wBWmn3mde/3GF/q00FrzqFDLQYnNbpGPdbnc+6ruthbMFqc2d2BazkmA19UVQTexfXi3EpMWA2CcFapYwnxOBn2VpDTVrRZdPQLQ24XEw46Gd8/lboxmpYGkE3Vj2Xoamnme6VhaLccuK6FKUplXRKr3pDfJdO/bMfaJqwqhO3KGqbsvvAQkqUyhL+B3IUFH3AmsX9kpHFGl1FKB/ifZZQqzOjWpKdpRCiAVW94J8TvIP0A1WddPS97nadv0W825SRIjLyAr4qwRgpPgRkUi02IK5XQTtp6mOV2gIK2lSqgt+3qxORkqnWa4MP49NLakrTnwOQceQrq6d2z6Wu95Ztq2Z0FT6whp19CdwqPIEgnGTw406JGniunR41QSEBsozXq6QclyPsuuCWzjrnWWlfqlYz9FZarV23S3OXLZjdUNJK1x0pkhI7QhQUr3ZNZRpeftKn7Wh31jSdN0e5U52Haeh6j1+xGuDaXosRhctxpXFLm6UpCSO0ZWCR24rVaUpSkJSkJSBgADAArHuzrUzmkdWRbyhovNJBafbBwVtqxvY8RgEeIrUNg1vpS9xEyIF8hnIyW3XA24k9xSrBBrOAi1ltNlKinbA6O4D758yOCkVeO+XGPaLPMucpaUMxWVOrJPYBnFce9a80faGS5N1BBGBkIac61avUlGSaofa5tQf1cn7lWtp2JZ0qClb5w5II4gqA+KkHkM+J7qkfIGhbjEsZp6KIneBfwA59/IKuXnFOvLdVnecUVn1k5r9RP7Yx+1R9YV8q/bKw2824QSELSogeBzSS5WDncrcDX9Wn1Cs69KD8d7d83j7RVX1pu9Wu/WtqdaprMplSQSUKyUkjkocwfA1QvSg/He3fN4+0VTc2bF0jaV7X4aXNNwSPdVNWhei1+K12/fh9mms9VoXotfitdv34fZpqGHtqrbM/3BvgfZXBSlKcXTVVnSc+T+P8AODf1VVm2tJdJz5P4/wA4N/VVWbaTn7S5rtT+v8h8q0ujN8oD/wC4OfWRV07U9Vp0fpCRc0BKpbhDERCuILqgcE+AAKj6qpbozfKA/wDuDn1kVJulWpz4DYEZPVl54nuyEp/mazYd2MkLa4bUvpsDfKzUE28yAqPuU2Xcp70+fIckyn1lbjrislR//dnIV1dHaSvmrZj0ayxUullG8644rcQjuBV3nsFcKrh6PWtrBp6HPs96kIgqkSA+zJWk7ivRCShSvycbuRnhxNQsALs1V8NhhqaprKh9mnU/ueahFy2d63t6yl/TU5eDjeYQHgf8hNeOPozV76wlvS95yTgb8JxA9qgBWqhrLSZAI1JasH/3SP50/plpP/Elq/1SP51N0LeatDtmaEnKfLxCoHTexfWFzdQq4Nx7THPxlPLC3MeCE54+siru2f7P7Bo1nfgtKkT1p3XJjwBcUO0DsSnwHnmuszqjTbxAav8Aa1E8QBKR/Ouow8y+2HGHW3UHkpCgoHzFSsja3RbrDsHoaQ78XWdzJv8Asv3UA2+2Rd42cy3GGyuRAWmWgAcSE8F/7So+VT+vy4hDjam3EpWhQKVJUMgg8wazcLiy2dVTtqYXQu0cLLDlWz0cNVtWm/v6emuBEe5EGOpXJL44Y/iHD1gd9RParo97RuqHIaUK+50jLkFwnO8jhlOe9JOPVg9tRNJUlQUlRSpJyCDgg94pEEscuVQSzYZWBxHWYcx/OY/K3JSqM2b7ammozVs1gHN5ACUXBtJVvDl+ESBnP6Qznu77etmpdP3NlL0C9QJCFDI3X059mcinGva7RdNosUpqxgdG7PlxHkurSuPddUactTJduF7t8dI/OfTn2Diapvadtm+HxHbTpHrmW3BuuT1goWU9zaTxTnjxPHuA50Oe1uq8rsVpqJhdI7PkNSuD0hNVNX7VqLbCcDkO1BTW8DkLeON8j1YCfWDVaHgMmgGBgVOtjGjXNWapbckNK+5cBaXpS8cFkHKWv4u3wB7xSeb3Lmb3TYnWXA6zz6fsAr62MWRVi2dWyM83uPvo+FPJIwQpz0sHxAwPKqO6QtpNt2kSZISQ1cWkSEnHDeA3Fe9OfOtRAADAGAKrrb3pFzUmkxMgtFy42wl1pIHpONn46B44AI8U47aakZ1LDgr5jGGb+GiGMXLLEeQt7XWX60X0ZLy1K0lKshX+HgSCsJJ/6bnEEfxBX/41nQEEAjka7GjtR3LS1+Zu9sWA63lK21fEdQeaFeH0EA0rG7dddUfB68UNU2U6aHwP8utm0qDaP2p6S1BGR1k9u2TCPTjS1bmD+io+ioerj3gVIJeqtMxGVPSNQWxDaeJPwpB+g06HA53XUIq2nlZvseCPFdd1aGm1OOLShCAVKUo4CQOZJqGr2qaCTOMQ6hZ3wcb4aWW/8+7u++qu2z7VI99hL0/ppxwwXDiVKKSjrh+YkHju954Z5cqp+oXz2Nmqr4ntR0MvR0oDgNSdPKx+63BDlRpsVuVEfakMOp3kONqCkqHeCOdfWqQ6K02a4zfbepalQmSy62kngha9/ex6wkezxq76mY7ebdWPDaz62mbPa1/g2SlKVknkr5TI7MuI9FkIC2Xm1NuJPJSSMEew19aULwi4sVjzaDpSbo/Ub1slIUWCoqiPEcHms8D6xyI7D6xUdraeorFadQ25VvvMFqXHUchK+BSe9JHFJ8RVW3fYHaHnFLtV9mQ0nkh5oPAeeUn30q+A36qoGIbLTskLqbrNPC9iO7PJZ+r9sMPSn240ZCnH3VhDSU81KJwAPPFXc30flhX4XViSnuTb8H7Q1N9C7KtN6VnIuKC/cJ7f9W9IIw34pSBgHjzOTWIhcdUpT7MV0jwJG7o4m4+LqcloORizIAcCkbrmRwVkYNZR2r6Hl6NvqwltS7TJWTDfxwAPHqz+kPeOPfjWVee5wIdzguwbhFalRnU7rjTid5KhTEkYeFdMXwlmIxBpNnDQ/wA4FYioQDzAPrrQmpNhFolOresN1ftpUchl5PXNjwByFDzJqKPbBtUJWA1drQtJPMlxOPLdpYxPHBUObZ7EIzbo7+BH+/sqmAA5ACvvAiSp81mFCjuSJL6txppsZUs9wFXLZ9gMtTgVeNRMoQOaIjBUT/EojHsNWrovRGndIskWiFh9Yw5JdO+6sd28eQ8BgV62Fx1TdFsvVzOHTDcb6nyA+Vm3aNoW4aLbtKpi+t+GR951SR6LbwJ3mwe3CSnj2+lUQraeprFa9R2h213eKmRGc44JwpChyUk8wR31UNy2AIVJKrbqZTTBPBEiJvqSP1goZ9lZPhN+qmMT2YnZJvUgu08L5j11UO6O0qSxtOisMLWlqTHeS+kHgoBBUM+ogV1ulEhQ1nbFkHdVAwD34WrP01aGzHZpbNFOuzRLcuFxdR1ZfWgIShGQSEpycZIGTk11NoWibTrW2tRriXGX2CVR5LWN9snGRx4EHAyD3CshG7o7LYxYJU/0l1M7tk3A9MlkGtD9FtCxpK6OFJCVT8JPfhtOa5jHR+SJAL+qlKYzxSiCErI/WKyPdVu6WsNt01ZGLRamS3GZz8Y5UtR5qUe0mvIo3NdcqDAMEq6aq6adu6ADxBvfwuupSlKZV2VW9JpClbPGVAEhNwa3j3cFVmytr3+0wL7aJFqubAfiSE7q0k47cgg9hBAIPeKp6b0f2VSVKhaocajk+ih6GHFAfrBaQfZS8sbnG4VL2hwWqqqkTQDeBAGoGnio50ZUqOvpKgkkJgL3iBy9NFXDtd0gdY6SXCjlKZ0dfXxCrgCsAjdJ7AoEj14PZX02caCtOiYjyYbjsmXIx18l0AKUBySAOCRx5V9Np2sI2jNNLuK0B6W6rqojJPx3CCcn9EYyfZzIrJrd1lnLZ0VC2jwt0VZpmT3X+flZKnRZMGY9DmMOR5LKyh1pwYUhQ5g18K99+u9xvt1eul1kqkynjlSzyA7EgdgHYK62idD6h1e8RaYoEdCt1yU8d1pB7s8yfAZpW1zYLnTYXTS7kALuXNRqlXrbNgDXVg3TUrhWRxTGjhIHmonPsFdA7A7Bg4vl0Hdwb/8ArWfQvW3bs1iLhfct5j8rPO6n80eyvTbZ022SRJtst+G8Py2HCg+7nV0XfYCsNqVaNRhSx8VuVH4H+JJ4f5TVS6q05d9MXU228xSw9jeQoHeQ4nON5J7R7++sXMc3VJVWF1dD15WEDmPyFZ2zjbTOiyWrfq9fwqIohInBIDjXisAYUPEcfXV/suNvNIeaWlxtaQpCknIUDxBBrDlaK6M+onbhpuXYZKypdsWksEnj1S84T5KCvIipoZCTulWbZzGpZZPpZze+hOuXA81YOs9M2zVdjdtV0ayhXpNuJ+O0vsUk9/0jgay7r/Q180bMKbgz10JSsMzW0/g3O7P5qvA+Wa15XzlR2JUdceSy28y4N1bbiQpKh3EHnUskYet5i2CQ4gN7svHH881h6v4UpJyUg+VaY1LsU0nc3Fv25UmzvK44YVvNZ/UVy9QIqGy9gN2S4RE1FBdR2F2OpB9xNLGF4VKn2ar4zYM3h3EfNiqZCUjkkD1Cv7VzQ9gN1U5/5zUcJpHaWY6ln3kVNtM7GNI2lxL81D93eTxHwlWGx/AnAPnmgQuK9p9mq+U2c3dHeR8XVJbOtn961nLQqO2qLbArD05afRGOYQPy1ergO01qLStgtumrIxabUz1cdoZJJypajzUo9pNdJlttlpLTLaG20DCUpGAkdwFfqmWRhiu2FYNDhzbjN51PwOQSlKVItwqG2zbKZCZT+otLxi604S5Kgtj0kHtW2O0HmU9nZ3Ck63LUN1ns00rql1UmXDVFmq4mVFVuLUf0hyV5jNLyQ3zaqhi2zAmeZaUgE6g6eXLw9lkwgEYIzX8CUg5CQPKrtuewGWHCbZqRlaM8EyYxSR5pJz7BXka2B30rAcv9tSntKWlqPs4VD0T+SrLtn8RBt0X3H5VPV19Kacu+qLqm22aKX3ebizwQ0n85auwe89lXfYNg9ijOJcvN1l3LHNttPUIPrwSr3irSslotllgJg2mCxDjJ4htpOBnvPefE1I2AnVbSh2UnkcDUndbyGZ/A+65OzvSULRunG7XFV1ryj1kmQRgvOHmcdgHIDuFSOlKZAsLBX2GFkLBHGLAaJSlK9UiUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCVm7pM3J2VrqPbd49TChpIT2b6yST7AkeVaRrN3SZtj0XXMe5lJLE2IkJV+mgkKHsKT5moZ+yq7tTvfQHd0uL+H+7Krmmy68hpJwVqCQe4k4raWm7REsVih2mE0ltmM0lAA7SBxUe8k8SfGsVgkEFJIIOQR2GtHbPNsdiuFuYh6kkC23JtASt1YPUvY/KCvySe0HyzUUDgCbqv7LVdPBK8SkAm1ifuL+italc2HqCwzEgxL1bnweXVyUK+g19JF5tEdO9IusFlPeuQhI95pq4V/ErCL3Fl7qp/pSsxjpS0yFBHwpNw3EH8rcLayryyEVKNR7VdFWZlRF2RcHx8VmF+FUT6/ijzNZ92k62uOtbumVJQI8RgFMWMlWQgHmontUeGT4YFQyvbu2Va2gxWlFK6Brg5zuAzt4qKVb/RaKv6VXcDO6YSc92d/h/zVQVojozaedgaemX+SgpXclpQwCOPVIz6XmonyAqGEXeqts7C6TEGFvC5PordpSlOrqKUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCUpShCVHdoek4OsdOuWuWrqnQesjPgZLLgBAPiOOCO0VIqV4QCLFRzRMmYY3i4Oqxpq7TF60rcjBvMNTJJPVPDi08O9KuR9XMdori1t64QodwirizorMphfxm3UBST5Gq71Fsd0RIQ5Ijw5UBfPEaQQnP6qsgeocKWfBbMKh4hss+G74Xgt5HX7a/ZZkKEnmlJ8qbiPzE+yrK1Hs/tFtnFhiZcVJyeK1oJ7O5ArwxdGW12S20qVNAWoA4UjP1ah3VWnUrg62SglO0DtPADvq/tNbHNKSQ25KkXV/eSFFKn0pH+1INWJpnQ2lNOKDlpssdp4f9deXHP8AMokjyqRsJctzQ7OT1XW3wB5k+lvlUfsw2R3O+yGbjqFl232oELDSxuuyBzxjmlJ7SePd31o+My1Gjtx47aWmmkhCEJGAlIGAAK+lKZYwMGSvWG4XBh8e7HmTqTqUpSlZrZJSlKEJSlKEJSlKEJSlKEJSlKEJSlKEJSlKEJSlKEJSlKEL/9k=" alt="Tangoe" style="height:28px;width:auto;object-fit:contain"/></div>
@@ -145,6 +220,15 @@ textarea{resize:vertical}
             <option value="168">7 days</option>
           </select>
         </div>
+        <div class="fl"><label>Max uses per link</label>
+          <select id="cfg-maxuses">
+            <option value="1" selected>1 use — single candidate only</option>
+            <option value="5">5 uses — small batch</option>
+            <option value="25">25 uses — bulk screening</option>
+            <option value="100">100 uses — open link</option>
+            <option value="999">Unlimited uses</option>
+          </select>
+        </div>
       </div>
 
       <div class="card full">
@@ -171,12 +255,41 @@ textarea{resize:vertical}
       <div class="link-box">
         <div style="font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Full interview link (copy this)</div>
         <div class="link-url" id="link-url"></div>
-        <div class="url-note">✓ Works on any device — JD is embedded in the URL. No localStorage dependency.</div>
+        <div class="url-note">✓ Works on any device — JD stored securely in Upstash Redis.</div>
         <div class="link-actions" style="margin-top:12px">
           <button class="copy-btn" onclick="copyLink(event)">Copy link</button>
           <button class="copy-btn" onclick="copyEmail(event)">Copy email invite</button>
           <button class="copy-btn" onclick="copyLinkedIn(event)">Copy LinkedIn post</button>
+          <button class="copy-btn" onclick="toggleQR()">📷 QR Code</button>
           <a id="test-link" href="#" target="_blank" class="copy-btn" style="text-decoration:none">Test it →</a>
+        </div>
+
+        <!-- QR CODE PANEL -->
+        <div id="qr-panel" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+            <div style="text-align:center">
+              <div id="qr-code" style="background:#fff;padding:12px;border-radius:10px;display:inline-block;border:1px solid var(--border)"></div>
+              <div style="font-size:11px;color:var(--muted);margin-top:8px">Scan to open interview</div>
+              <button class="copy-btn" onclick="downloadQR()" style="margin-top:8px;display:block;width:100%">⬇ Download QR</button>
+            </div>
+            <div style="flex:1;min-width:200px">
+              <div style="font-size:12px;color:var(--text);font-weight:600;margin-bottom:10px">Share QR Code via:</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="font-size:12px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+                  📋 <strong style="color:var(--text)">Print & Post</strong><br/>
+                  <span style="font-size:11px">Download and add to job posting, notice board, or email signature</span>
+                </div>
+                <div style="font-size:12px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+                  💼 <strong style="color:var(--text)">LinkedIn / WhatsApp</strong><br/>
+                  <span style="font-size:11px">Download image and attach to your message or post</span>
+                </div>
+                <div style="font-size:12px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+                  📧 <strong style="color:var(--text)">Email Attachment</strong><br/>
+                  <span style="font-size:11px">Attach the downloaded QR image to your email invite</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
           <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Works on any device — no setup needed for candidates</div>
@@ -263,6 +376,7 @@ async function generateLink(){
     tabDetect: document.getElementById('cfg-tab').checked,
     photoInterval: document.getElementById('cfg-photo').value,
     expiry: document.getElementById('cfg-expiry').value,
+    maxUses: document.getElementById('cfg-maxuses').value,
     email: document.getElementById('cfg-email').value,
     cc: document.getElementById('cfg-cc').value,
     createdAt: new Date().toISOString(),
@@ -310,6 +424,14 @@ async function generateLink(){
   document.getElementById('test-link').href = url;
   goStep(3);
   renderSaved();
+  // Auto-generate QR code
+  setTimeout(()=>{
+    const qrDiv = document.getElementById('qr-code');
+    if(qrDiv){ qrDiv.innerHTML=''; new QRCode(qrDiv,{text:url,width:180,height:180,colorDark:'#0a0d14',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H}); }
+    document.getElementById('qr-panel').style.display='block';
+    const qrBtn = document.querySelector('.copy-btn[onclick="toggleQR()"]');
+    if(qrBtn) qrBtn.textContent='✕ Hide QR';
+  }, 300);
 }
 
 function goStep(n){
@@ -351,7 +473,86 @@ function copyEmail(e){
 function newInterview(){
   document.getElementById('jd-text').value='';
   document.getElementById('jd-role').value='QA Engineer';
+  // Clear QR
+  const qrDiv = document.getElementById('qr-code');
+  if(qrDiv) qrDiv.innerHTML='';
+  document.getElementById('qr-panel').style.display='none';
   goStep(1);
+}
+
+// ── QR CODE ───────────────────────────────────────────────────────────────
+let qrInstance = null;
+
+function generateQR(url){
+  const qrDiv = document.getElementById('qr-code');
+  qrDiv.innerHTML = '';
+  qrInstance = new QRCode(qrDiv, {
+    text: url,
+    width: 180,
+    height: 180,
+    colorDark: '#0a0d14',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+}
+
+function toggleQR(){
+  const panel = document.getElementById('qr-panel');
+  if(panel.style.display === 'none'){
+    panel.style.display = 'block';
+    const url = document.getElementById('link-url').textContent;
+    if(url) generateQR(url);
+    event.target.textContent = '✕ Hide QR';
+  } else {
+    panel.style.display = 'none';
+    event.target.textContent = '📷 QR Code';
+  }
+}
+
+function downloadQR(){
+  const canvas = document.querySelector('#qr-code canvas');
+  const img = document.querySelector('#qr-code img');
+  let dataUrl;
+
+  if(canvas){
+    // Add white padding and role label
+    const padding = 20;
+    const labelHeight = 36;
+    const newCanvas = document.createElement('canvas');
+    newCanvas.width = canvas.width + padding*2;
+    newCanvas.height = canvas.height + padding*2 + labelHeight;
+    const ctx = newCanvas.getContext('2d');
+
+    // White background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0,0,newCanvas.width,newCanvas.height);
+
+    // Draw QR
+    ctx.drawImage(canvas, padding, padding);
+
+    // Add role label at bottom
+    const jd = JSON.parse(localStorage.getItem('active_jd')||'{}');
+    const role = jd.role || 'Interview';
+    ctx.fillStyle = '#0a0d14';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Tangoe · ' + role + ' Interview', newCanvas.width/2, canvas.height + padding*2 + 14);
+    ctx.font = '11px Arial';
+    ctx.fillStyle = '#6b7394';
+    ctx.fillText('Scan to apply', newCanvas.width/2, canvas.height + padding*2 + 30);
+
+    dataUrl = newCanvas.toDataURL('image/png');
+  } else if(img){
+    dataUrl = img.src;
+  } else {
+    alert('QR code not generated yet.'); return;
+  }
+
+  const a = document.createElement('a');
+  const jd2 = JSON.parse(localStorage.getItem('active_jd')||'{}');
+  a.download = 'Tangoe_Interview_QR_' + (jd2.role||'Interview').replace(/\s+/g,'_') + '.png';
+  a.href = dataUrl;
+  a.click();
 }
 
 function renderSaved(){
