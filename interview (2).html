@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tangoe Hiring · Interview</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4f6fb;--surface:#fff;--border:#e2e6f0;--accent:#0057ff;--accent2:#7c5cfc;
+  --green:#16a34a;--green-bg:#f0fdf4;--green-border:#86efac;
+  --amber:#d97706;--amber-bg:#fffbeb;--amber-border:#fcd34d;
+  --red:#dc2626;--red-bg:#fef2f2;--ink:#0f1117;--muted:#6b7280;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+
+.nav{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}
+.logo{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
+.proctor-badge{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--red);background:var(--red-bg);border:1px solid #fca5a5;border-radius:999px;padding:4px 12px;font-weight:500}
+.proctor-dot{width:7px;height:7px;border-radius:50%;background:var(--red);animation:blink 1.2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.steps{display:flex;justify-content:center;align-items:center;padding:24px;gap:0}
+.s-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.s-item.active{color:var(--accent);font-weight:500}
+.s-item.done{color:var(--green)}
+.s-dot{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.s-item.active .s-dot{border-color:var(--accent);background:var(--accent);color:#fff}
+.s-item.done .s-dot{border-color:var(--green);background:var(--green);color:#fff;font-size:14px}
+.s-line{width:36px;height:1px;background:var(--border);margin:0 6px}
+
+.wrap{max-width:780px;margin:0 auto;padding:0 16px 40px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.card-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px}
+.card-sub{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+
+.camera-wrap{position:relative;width:100%;max-width:340px;margin:0 auto 20px;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3}
+#cam-video{width:100%;height:100%;object-fit:cover;display:block}
+.cam-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;background:rgba(0,0,0,.7);color:#fff;font-size:14px;text-align:center;padding:20px}
+.cam-overlay svg{width:40px;height:40px;opacity:.6}
+#cam-status{position:absolute;top:10px;left:10px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;background:rgba(22,163,74,.9);color:#fff}
+#photo-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .1s}
+
+.chat-area{display:flex;flex-direction:column;gap:10px;max-height:400px;overflow-y:auto;margin-bottom:14px;padding:2px;scroll-behavior:smooth}
+.msg{padding:12px 16px;border-radius:12px;font-size:14px;line-height:1.65;max-width:90%}
+.msg-ai{background:var(--bg);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:3px}
+.msg-me{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:3px}
+.msg-warn{background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber);align-self:stretch;font-size:12px;padding:8px 12px;border-radius:8px;max-width:100%}
+.chat-row{display:flex;gap:8px}
+.chat-row input{flex:1;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:11px 14px;outline:none;transition:border .15s}
+.chat-row input:focus{border-color:var(--accent);background:#fff}
+.q-bar{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+.q-dots{display:flex;gap:5px}
+.q-dot{width:7px;height:7px;border-radius:50%;background:var(--border);transition:background .3s}
+.q-dot.done{background:var(--accent)}
+.btn{padding:10px 22px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+.btn-blue{background:var(--accent);color:#fff}
+.btn-blue:hover{background:#0040cc}
+.btn-blue:disabled{opacity:.4;cursor:not-allowed}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+.done-wrap{text-align:center;padding:52px 24px}
+.done-icon{width:64px;height:64px;background:var(--green-bg);border:1.5px solid var(--green-border);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:26px}
+.done-wrap h2{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;margin-bottom:10px}
+.done-wrap p{color:var(--muted);font-size:15px;line-height:1.65;max-width:420px;margin:0 auto}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fl{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+label{font-size:12px;color:var(--muted);font-weight:500}
+input[type=text],input[type=email],select{width:100%;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 13px;outline:none;transition:all .15s}
+input:focus,select:focus{border-color:var(--accent);background:#fff}
+.rules-list{list-style:none;padding:0;display:flex;flex-direction:column;gap:8px}
+.rules-list li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--muted);line-height:1.5}
+.rules-list li span:first-child{font-size:16px;flex-shrink:0}
+
+@media(max-width:600px){
+  .wrap{padding:0 10px 30px}
+  .card{padding:16px}
+  .chat-area{max-height:260px}
+  .camera-wrap{width:90px!important;max-width:90px!important}
+  .chat-row input{font-size:16px}
+  .steps{padding:16px 8px;gap:0}
+  .s-line{width:20px}
+  .s-item{font-size:11px}
+  .g2{grid-template-columns:1fr}
+}
+.no-select{user-select:none;-webkit-user-select:none}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="logo">
+    <img src="data:image/png;base64,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" alt="Tangoe" style="height:32px;width:auto;object-fit:contain"/>
+  </div>
+  <div class="proctor-badge"><div class="proctor-dot"></div>Proctored interview</div>
+</nav>
+
+<div class="steps">
+  <div class="s-item active" id="si-1"><div class="s-dot" id="sd-1">1</div>Details</div>
+  <div class="s-line"></div>
+  <div class="s-item" id="si-2"><div class="s-dot" id="sd-2">2</div>Camera check</div>
+  <div class="s-line"></div>
+  <div class="s-item" id="si-3"><div class="s-dot" id="sd-3">3</div>Video intro</div>
+  <div class="s-line"></div>
+  <div class="s-item" id="si-4"><div class="s-dot" id="sd-4">4</div>Interview</div>
+  <div class="s-line"></div>
+  <div class="s-item" id="si-5"><div class="s-dot" id="sd-5">5</div>Done</div>
+</div>
+
+<div class="wrap">
+
+  <!-- STEP 1: Details -->
+  <div id="s1">
+    <div class="card">
+      <div class="card-title" id="s1-title">Tangoe · Interview</div>
+      <div class="card-sub">Complete this proctored AI screening interview. It takes 15–20 minutes. Answer from your own experience — not from notes or other tools.</div>
+
+      <div class="g2">
+        <div class="fl"><label>Full name *</label><input type="text" id="c-name" placeholder="Your full name"/></div>
+        <div class="fl"><label>Mobile number * (10 digits)</label><input type="tel" id="c-mobile" placeholder="9876543210" maxlength="10" pattern="[0-9]{10}" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/></div>
+      </div>
+      <div class="fl"><label>Email address *</label><input type="email" id="c-email" placeholder="your@email.com"/><div id="email-err" style="color:#dc2626;font-size:12px;margin-top:4px;display:none">Please enter a valid email address</div></div>
+
+      <div class="g2">
+        <div class="fl"><label>Years of experience</label>
+          <select id="c-yoe">
+            <option>Less than 1 year</option><option>1–2 years</option>
+            <option>3–5 years</option><option>6–10 years</option><option>10+ years</option>
+          </select>
+        </div>
+        <div class="fl"><label>Current location</label>
+          <select id="c-location">
+            <option value="">Select city</option>
+            <option>Bangalore</option><option>Mumbai</option><option>Delhi / NCR</option>
+            <option>Hyderabad</option><option>Chennai</option><option>Pune</option>
+            <option>Kolkata</option><option>Ahmedabad</option><option>Noida</option>
+            <option>Gurgaon</option><option>Mysore</option><option>Coimbatore</option>
+            <option>Kochi</option><option>Indore</option><option>Bhubaneswar</option>
+            <option>Jaipur</option><option>Chandigarh</option><option>Nagpur</option>
+            <option>Thiruvananthapuram</option><option>Lucknow</option>
+            <option>Vizag / Visakhapatnam</option><option>Vadodara</option>
+            <option>Surat</option><option>Mangalore</option><option>Hubli</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="fl"><label>Skills & tools * (comma separated)</label>
+        <input type="text" id="c-skills" placeholder="e.g. Selenium, Cypress, JIRA, Postman, SQL, Jenkins, Python"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Enter all relevant skills, tools, frameworks and technologies</div>
+      </div>
+
+      <div class="fl"><label>Total years of IT experience *</label>
+        <input type="text" id="c-exp" placeholder="e.g. 5 years 3 months"/>
+      </div>
+
+      <div class="fl">
+        <label>Current company name *</label>
+        <div style="position:relative">
+          <input type="text" id="c-company" placeholder="e.g. Infosys, TCS, Wipro, Startup name..."
+            oninput="scheduleCompanyVerify(this.value)"
+            style="padding-right:140px"/>
+          <div id="company-status" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:500;white-space:nowrap;color:var(--muted)">
+            Type to verify...
+          </div>
+        </div>
+        <div id="company-detail" style="font-size:12px;margin-top:5px;padding:8px 12px;border-radius:6px;display:none"></div>
+      </div>
+
+      <div class="fl"><label>Upload resume * (PDF or Word)</label>
+        <input type="file" id="c-resume" accept=".pdf,.doc,.docx" style="background:var(--bg);padding:8px"/>
+        <div id="resume-err" style="color:#dc2626;font-size:12px;margin-top:4px;display:none">Please upload your resume</div>
+      </div>
+
+      <ul class="rules-list" style="margin-bottom:20px;margin-top:8px">
+        <li><span>📷</span><span>Webcam is mandatory throughout — camera cannot be skipped.</span></li>
+        <li><span>🚫</span><span>Do not use AI tools, notes, or any other assistance.</span></li>
+        <li><span>⏱</span><span>Copied or pasted answers will be flagged automatically.</span></li>
+        <li><span>🔇</span><span>Find a quiet space. Tab switching will be detected and reported.</span></li>
+        <li><span>🎥</span><span>A 3-5 minute video self-introduction is mandatory before the interview.</span></li>
+        <li><span>📍</span><span>Location verification is required — please allow GPS access when prompted.</span></li>
+      </ul>
+      <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
+        <button class="btn btn-blue" onclick="goCamera()">Continue to camera check →</button>
+        <button class="btn" onclick="resetForm()" style="background:#fff;border:1px solid var(--border);color:var(--muted)">↺ Reset form</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Camera -->
+  <div id="s2" style="display:none">
+    <div class="card">
+      <div class="card-title">Camera & proctoring check</div>
+      <div class="card-sub">We need access to your webcam. Your video is NOT recorded or shared — only periodic still photos are captured for verification.</div>
+      <div class="camera-wrap">
+        <video id="cam-video" autoplay muted playsinline webkit-playsinline></video>
+        <div class="cam-overlay" id="cam-overlay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.069A1 1 0 0121 8.876V15.12a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+          <span>Click below to enable camera</span>
+        </div>
+        <div id="cam-status" style="display:none">● LIVE</div>
+        <div id="photo-flash"></div>
+      </div>
+      <div style="text-align:center;margin-bottom:16px">
+        <button class="btn btn-blue" id="cam-btn" onclick="startCamera()">Enable camera →</button>
+      </div>
+      <div id="cam-ready" style="display:none;text-align:center">
+        <div style="background:var(--green-bg);border:1px solid var(--green-border);border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:var(--green)">
+          ✓ Camera active — you're all set
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-blue" onclick="startInterview()">Begin video intro →</button>
+          <button class="btn" onclick="goBackToDetails()" style="background:#fff;border:1px solid var(--border);color:var(--muted)">← Edit details</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Video Self Introduction -->
+  <div id="s3" style="display:none">
+    <div class="card">
+      <div class="card-title">🎥 Video self-introduction</div>
+      <div class="card-sub">Record a 2–5 minute video introducing yourself. Tell us about your background, experience, and why you are applying for this role.</div>
+      <div style="background:#fff8eb;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#92400e">
+        ⏱ Minimum <strong>2 minutes</strong> required. Maximum 5 minutes. Click Start when ready.
+      </div>
+      <div style="position:relative;width:100%;max-width:480px;margin:0 auto 16px;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3">
+        <video id="intro-preview" autoplay muted playsinline webkit-playsinline style="width:100%;height:100%;object-fit:cover;display:block"></video>
+        <div id="intro-rec-badge" style="display:none;position:absolute;top:10px;left:10px;background:rgba(220,38,38,.9);color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px">● REC</div>
+        <div id="intro-timer" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,.6);color:#fff;font-size:14px;font-weight:600;padding:4px 12px;border-radius:999px">0:00</div>
+        <div id="intro-playback" style="display:none;width:100%;height:100%;position:absolute;top:0;left:0">
+          <video id="intro-video" controls style="width:100%;height:100%;object-fit:cover"></video>
+        </div>
+      </div>
+      <div id="intro-min-warn" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;color:#dc2626;margin-bottom:12px">
+        ⚠️ Minimum 2 minutes required. Please continue recording.
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+        <button class="btn btn-blue" id="intro-start-btn" onclick="startIntroRecording()">▶ Start recording</button>
+        <button class="btn" id="intro-stop-btn" onclick="stopIntroRecording()" style="display:none;background:#dc2626;color:#fff;border:none">⏹ Stop recording</button>
+        <button class="btn" id="intro-redo-btn" onclick="redoIntro()" style="display:none;background:#fff;border:1px solid var(--border);color:var(--ink)">↺ Re-record</button>
+        <button class="btn btn-blue" id="intro-proceed-btn" onclick="proceedToInterview()" style="display:none">Continue to interview →</button>
+        <button class="btn" id="intro-back-btn" onclick="goBackToCamera()" style="background:#fff;border:1px solid var(--border);color:var(--muted)">← Back to camera</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4: Interview -->
+  <div id="s4" class="no-select" style="display:none" oncontextmenu="return false">
+    <div id="cheat-banner" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:10px;padding:10px 16px;font-size:13px;color:var(--amber);margin-bottom:12px"></div>
+    <div class="card">
+      <div class="card-title" id="int-label">Tangoe Interview</div>
+      <!-- Camera above chat - full width -->
+      <div style="position:relative;width:100%;max-width:320px;margin:0 auto 14px;border-radius:10px;overflow:hidden;background:#000;aspect-ratio:16/9">
+        <video id="cam-video2" autoplay muted playsinline webkit-playsinline style="width:100%;height:100%;object-fit:cover;display:block"></video>
+        <div id="cam-status2" style="position:absolute;top:8px;left:8px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;background:rgba(22,163,74,.9);color:#fff;display:none">● REC</div>
+      </div>
+      <div class="chat-area" id="chat-area"></div>
+      <div class="chat-row">
+        <input type="text" id="ans" placeholder="Type your answer and press Enter…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAns()}"/>
+        <button class="btn btn-blue" id="send-btn" onclick="sendAns()">Send →</button>
+      </div>
+      <div class="q-bar" style="margin-top:10px">
+        <span style="font-size:12px;color:var(--muted)" id="q-label">Question 1</span>
+        <div class="q-dots" id="q-dots"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 5: Done -->
+  <div id="s5" style="display:none">
+    <div class="done-wrap">
+      <div class="done-icon">✓</div>
+      <h2>Interview complete!</h2>
+      <p>Your responses have been submitted to the Tangoe hiring team. You'll hear back within 2–3 business days at <strong id="done-email"></strong>.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = "/api/chat";
+const MODEL = "claude-haiku-4-5-20251001";
+
+// ✅ Load config — supports short ID (Upstash), cfg64 (base64), and old URL params
+const urlParams = new URLSearchParams(window.location.search);
+let config = {};
+
+// Async config loader — runs immediately
+async function loadConfig(){
+  // PRIMARY: short ID from Upstash Redis → clean short URL
+  const shortId = urlParams.get('id');
+  if(shortId){
+    try{
+      const r = await fetch(`/api/get-jd?id=${shortId}`);
+      if(r.ok){ config = await r.json(); return; }
+    }catch(e){ console.warn('get-jd error',e); }
+  }
+
+  // SECONDARY: cfg64 base64 fallback (old links still work)
+  const cfg64 = urlParams.get('cfg64');
+  if(cfg64){
+    try{
+      config = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(cfg64)))));
+      if(Object.keys(config).length) return;
+    }catch(e){ console.warn('cfg64 parse error',e); }
+  }
+
+  // TERTIARY: old-style URL params
+  const urlRole = urlParams.get('role');
+  if(urlRole){
+    config = {
+      role: urlRole, jd: '',
+      questions: parseInt(urlParams.get('q'))||6,
+      level: urlParams.get('level')||'mid',
+      focus: 'balanced', camera: true,
+      pasteDetect: true, tabDetect: true, photoInterval: 60
+    };
+    return;
+  }
+
+  // DEFAULT fallback
+  config = {
+    role: 'QA Engineer', questions: 6, focus: 'balanced', level: 'mid',
+    camera: true, pasteDetect: true, tabDetect: true, photoInterval: 60, jd: ''
+  };
+}
+
+
+
+// All globals set after config loads (defaults shown until API returns)
+// Config-derived constants (read lazily from config object)
+function getTOTAL_Q(){ return parseInt(config.questions)||6; }
+function getROLE(){ return config.role||'QA Engineer'; }
+function getJD(){ return config.jd||''; }
+function getPHOTO_INTERVAL(){ return (parseInt(config.photoInterval)||60)*1000; }
+
+// For backward compat — set after load
+let TOTAL_Q = 6, ROLE = 'QA Engineer', JD = '', PHOTO_INTERVAL = 60000;
+(async()=>{
+  await loadConfig();
+  TOTAL_Q = getTOTAL_Q();
+  ROLE = getROLE();
+  JD = getJD();
+  PHOTO_INTERVAL = getPHOTO_INTERVAL();
+  document.getElementById('s1-title').textContent = ROLE+' · Tangoe';
+  const il=document.getElementById('int-label');
+  if(il) il.textContent = ROLE+' Interview · Tangoe';
+})();
+
+// State
+let chat=[], tx=[], qCount=0, cur={};
+let stream=null, photoTimer=null, photos=[];
+let typingLog=[], answerStartTime=0, lastKeyTime=0, pasteDetected=false, totalKeystrokes=0;
+let tabSwitchCount=0;
+
+// Update UI with role
+document.getElementById('s1-title').textContent = ROLE + ' · Tangoe';
+document.getElementById('int-label').textContent = ROLE + ' Interview · Tangoe';
+
+// Tab switch detection
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden && qCount>0){
+    tabSwitchCount++;
+    addBubble(`⚠️ Tab switch detected (${tabSwitchCount}x). Please stay on this page during your interview.`,'warn');
+  }
+});
+
+function setStep(n){
+  [1,2,3,4,5].forEach(i=>{
+    const si=document.getElementById('si-'+i);
+    const sd=document.getElementById('sd-'+i);
+    if(!si) return;
+    si.classList.remove('active','done');
+    if(i<n){si.classList.add('done');sd.textContent='✓';}
+    else if(i===n){si.classList.add('active');sd.textContent=i;}
+    else{sd.textContent=i;}
+    const el=document.getElementById('s'+i);
+    if(el) el.style.display=i===n?'block':'none';
+  });
+}
+
+async function goCamera(){
+  const name=document.getElementById('c-name').value.trim();
+  const mobile=document.getElementById('c-mobile').value.trim();
+  const email=document.getElementById('c-email').value.trim();
+  const skills=document.getElementById('c-skills').value.trim();
+  const exp=document.getElementById('c-exp').value.trim();
+  const location=document.getElementById('c-location').value.trim();
+  const resumeFile=document.getElementById('c-resume').files[0];
+
+  if(!name){alert('Please enter your full name.');return;}
+  if(!mobile||!/^[0-9]{10}$/.test(mobile)){alert('Please enter a valid 10-digit mobile number.');document.getElementById('c-mobile').focus();return;}
+
+  const emailRegex=/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+  if(!email||!emailRegex.test(email)){document.getElementById('email-err').style.display='block';document.getElementById('c-email').focus();return;}
+  else{document.getElementById('email-err').style.display='none';}
+
+  if(!skills){alert('Please enter your skills and tools.');return;}
+  if(!exp){alert('Please enter your total years of IT experience.');return;}
+  if(!resumeFile){document.getElementById('resume-err').style.display='block';return;}
+  else{document.getElementById('resume-err').style.display='none';}
+
+  // ✅ GPS LOCATION CAPTURE
+  const gpsBtn = document.querySelector('button[onclick="goCamera()"]');
+  if(gpsBtn){ gpsBtn.disabled=true; gpsBtn.textContent='📍 Getting location…'; }
+
+  let gpsData = { status: 'not_requested' };
+  try{
+    const pos = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        timeout: 8000, enableHighAccuracy: true
+      });
+    });
+    const lat = pos.coords.latitude.toFixed(5);
+    const lng = pos.coords.longitude.toFixed(5);
+    const acc = Math.round(pos.coords.accuracy);
+    // Reverse geocode using free API
+    let city = '', region = '', country = '';
+    try{
+      const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+      const gj = await geo.json();
+      city = gj.address?.city || gj.address?.town || gj.address?.village || '';
+      region = gj.address?.state || '';
+      country = gj.address?.country || '';
+    }catch(e){}
+    gpsData = { status:'captured', lat, lng, accuracy:acc, city, region, country,
+      display: city ? `${city}, ${region}` : `${lat}, ${lng}`,
+      capturedAt: new Date().toISOString()
+    };
+    // Check if GPS city matches selected city (loose match)
+    const selectedCity = location.toLowerCase();
+    const gpsCity = (city+' '+region).toLowerCase();
+    const cityWords = selectedCity.split(/[\/\s,]+/).filter(w=>w.length>3);
+    const cityMatch = cityWords.some(w => gpsCity.includes(w));
+    gpsData.locationMatch = cityMatch;
+    gpsData.locationMismatch = location && !cityMatch;
+  }catch(e){
+    gpsData = { status: e.code===1 ? 'denied' : 'failed', error: e.message };
+  }
+
+  if(gpsBtn){ gpsBtn.disabled=false; gpsBtn.textContent='Continue to camera check →'; }
+
+  const reader=new FileReader();
+  reader.onload=function(){
+    const companyRaw = document.getElementById('c-company').value.trim();
+    const companyVerif = window._companyVerifResult || {status:'not_checked', name: companyRaw};
+    cur={
+      name,mobile,email,skills,exp,location,
+      company: companyRaw,
+      companyVerification: companyVerif,
+      yoe:document.getElementById('c-yoe').value,
+      tool:skills,
+      resumeName:resumeFile.name,
+      resumeSize:Math.round(resumeFile.size/1024)+'KB',
+      gps: gpsData,
+      start:new Date().toISOString()
+    };
+    setStep(2);
+  };
+  reader.readAsDataURL(resumeFile);
+}
+
+async function resetForm(){
+  // Clear all form fields so candidate can edit
+  document.getElementById('c-name').value='';
+  document.getElementById('c-mobile').value='';
+  document.getElementById('c-email').value='';
+  document.getElementById('c-skills').value='';
+  document.getElementById('c-exp').value='';
+  document.getElementById('c-location').value='';
+  document.getElementById('c-yoe').selectedIndex=0;
+  document.getElementById('c-resume').value='';
+  document.getElementById('c-company').value='';
+  document.getElementById('email-err').style.display='none';
+  document.getElementById('resume-err').style.display='none';
+  document.getElementById('company-status').textContent='Type to verify...';
+  document.getElementById('company-detail').style.display='none';
+  window._companyVerifResult = null;
+  cur={};
+}
+
+function goBackToDetails(){
+  // Stop camera if running
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  setStep(1);
+}
+
+async function startCamera(){
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},
+      audio:true
+    });
+    document.getElementById('cam-video').srcObject=stream;
+    document.getElementById('cam-overlay').style.display='none';
+    document.getElementById('cam-status').style.display='block';
+    document.getElementById('cam-btn').style.display='none';
+    document.getElementById('cam-ready').style.display='block';
+  }catch(e){
+    alert('Camera access denied. Please allow camera access to continue.');
+  }
+}
+
+function startInterview(){
+  setStep(3);
+  if(stream){
+    const prev=document.getElementById('intro-preview');
+    prev.srcObject=stream;
+    prev.muted=true;
+    prev.play().catch(e=>{});
+  }
+}
+
+function buildSystem(cheatCtx){
+  const cheatNote=cheatCtx?`\nANTI-CHEAT SIGNAL: ${cheatCtx}. Ask a razor-specific follow-up requiring lived memory.`:'';
+  return `You are conducting an initial recruiter screening interview for a ${ROLE} position at Tangoe.
+
+JOB DESCRIPTION:
+${JD||`${ROLE} role at Tangoe — technology expense management SaaS company. Assess technical skills, problem solving, and communication.`}
+
+Your goal: assess if candidate meets JD requirements through natural conversation.
+
+Rules:
+1. Ask ONE question at a time — never multiple
+2. Base questions directly on JD requirements
+3. Probe for: specific tools used, real project examples, actual metrics/outcomes
+4. If answer is vague: ask for a specific example from recent work
+5. Vary across: technical skills, process knowledge, past impact, problem solving
+6. After exactly ${TOTAL_Q} candidate answers, output ONLY:
+Line 1: DONE
+Line 2: valid JSON (no markdown):
+{"verdict":"Strong Yes","score":8,"strengths":["X","Y"],"concerns":["Z"],"jdMatch":85,"summary":"2 sentence summary against JD."}
+${cheatNote}
+Verdict options: Strong Yes(9-10)/Yes(7-8)/Maybe(5-6)/No(1-4). Be conversational but precise.`;
+}
+
+async function sendAns(){
+  const inp=document.getElementById('ans');
+  const a=inp.value.trim();
+  if(!a)return;
+
+  const typing=getTypingSignals(a);
+  const content=analyzeContent(a);
+  const flags=[];
+  if(typing.likelyPasted) flags.push('answer pasted');
+  if(typing.suspiciouslyFast) flags.push(`speed: ${typing.wpm}wpm`);
+  if(content.aiScore>=4) flags.push(`AI phrasing score: ${content.aiScore}/10`);
+  if(tabSwitchCount>0) flags.push(`tab switches: ${tabSwitchCount}`);
+
+  if(flags.length){
+    const b=document.getElementById('cheat-banner');
+    b.style.display='flex';
+    b.innerHTML=`⚠️ <strong>Authenticity flag:</strong> ${flags.join(' · ')} — follow-up questions will probe deeper.`;
+  }
+
+  inp.value='';
+  addBubble(a,true);
+  if(tx.length>0&&tx[tx.length-1].a===null){
+    tx[tx.length-1].a=a;
+    tx[tx.length-1].flags=flags;
+    tx[tx.length-1].typingSignals=typing;
+  }
+  qCount++;
+  updateDots(qCount);
+  setQLabel(qCount+1);
+  chat.push({role:'user',content:a});
+  resetTypingTracker();
+
+  // ✅ FIX: Force finish after TOTAL_Q answers regardless of Claude response
+  if(qCount >= TOTAL_Q){
+    // Disable input immediately
+    const inp2=document.getElementById('ans');
+    const btn2=document.getElementById('send-btn');
+    inp2.disabled=true;
+    btn2.disabled=true;
+    btn2.innerHTML='<span class="spin"></span> Finishing…';
+    // Get final assessment from Claude then force exit
+    const finalReply = await callClaude(null);
+    if(finalReply.trimStart().startsWith('DONE')){
+      await finish(finalReply);
+    } else {
+      // Force finish even if Claude didn't say DONE
+      await finish('DONE\n{"verdict":"Pending","score":5,"strengths":[],"concerns":[],"jdMatch":50,"summary":"Interview completed. Assessment pending review."}');
+    }
+    return;
+  }
+
+  const btn=document.getElementById('send-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  const think=document.createElement('div');
+  think.className='msg msg-ai';
+  think.innerHTML='<span class="spin" style="border-top-color:#999"></span>';
+  document.getElementById('chat-area').appendChild(think);
+  scrollChat();
+
+  const cheatCtx=flags.length?flags.join(', '):null;
+  const reply=await callClaude(cheatCtx);
+  chat.push({role:'assistant',content:reply});
+  think.remove();
+  btn.disabled=false;btn.textContent='Send →';
+
+  if(reply.trimStart().startsWith('DONE')){
+    await finish(reply);
+  }else{
+    tx.push({q:reply,a:null});
+    addBubble(reply,false);
+  }
+}
+
+async function callClaude(cheatCtx){
+  try{
+    const r=await fetch(API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:MODEL,max_tokens:600,system:buildSystem(cheatCtx),messages:chat})
+    });
+    const d=await r.json();
+    if(d.error) return '❌ '+d.error.message;
+    return d.content?.[0]?.text||'No response.';
+  }catch(e){return '❌ Error: '+e.message;}
+}
+
+async function finish(reply){
+  stopPhotoCapture();
+  let assessment={};
+  try{const jm=reply.match(/\{[\s\S]*\}/);if(jm)assessment=JSON.parse(jm[0]);}catch(e){}
+
+  const allFlags=tx.filter(t=>t.flags?.length).map((t,i)=>`Q${i+1}: ${t.flags.join(', ')}`);
+  assessment.authenticityFlags=allFlags;
+  assessment.authenticityScore=Math.max(0,10-allFlags.length*2);
+  assessment.tabSwitches=tabSwitchCount;
+  assessment.photoCount=photos.length;
+
+  const result={
+    candidate:cur,assessment,
+    transcript:tx,photos,
+    completedAt:new Date().toISOString()
+  };
+
+  const existing=JSON.parse(localStorage.getItem('tangoe_candidates')||'[]');
+  existing.unshift({...result,id:Date.now()});
+  localStorage.setItem('tangoe_candidates',JSON.stringify(existing));
+
+  document.getElementById('done-email').textContent=cur.email;
+  setStep(5);
+}
+
+// ── CAMERA / PHOTO CAPTURE ────────────────────────────────────────────────
+function startPhotoCapture(){
+  photoTimer=setInterval(()=>{
+    const video=document.getElementById('cam-video2');
+    if(!video.srcObject)return;
+    const canvas=document.createElement('canvas');
+    canvas.width=320;canvas.height=240;
+    canvas.getContext('2d').drawImage(video,0,0,320,240);
+    photos.push({dataUrl:canvas.toDataURL('image/jpeg',0.6),time:new Date().toISOString()});
+    const flash=document.getElementById('photo-flash');
+    if(flash){flash.style.opacity='0.4';setTimeout(()=>flash.style.opacity='0',150);}
+  },PHOTO_INTERVAL);
+}
+function stopPhotoCapture(){
+  if(photoTimer){clearInterval(photoTimer);photoTimer=null;}
+  if(stream){stream.getTracks().forEach(t=>t.stop());}
+}
+
+// ── ANTI-CHEAT ───────────────────────────────────────────────────────────
+function initTypingTracker(){
+  const inp=document.getElementById('ans');
+  resetTypingTracker();
+  inp.addEventListener('paste',()=>{pasteDetected=true;});
+  inp.addEventListener('keydown',(e)=>{
+    if(e.key.length===1){totalKeystrokes++;lastKeyTime=Date.now();}
+  });
+}
+function resetTypingTracker(){
+  answerStartTime=Date.now();pasteDetected=false;totalKeystrokes=0;lastKeyTime=0;
+}
+function getTypingSignals(text){
+  const words=text.trim().split(/\s+/).length;
+  const time=Date.now()-answerStartTime;
+  const wpm=Math.round(words/(time/60000));
+  const pasteRatio=text.length>0?(text.length-totalKeystrokes)/text.length:0;
+  return{
+    words,wpm,pasteRatio:Math.round(pasteRatio*100),
+    likelyPasted:pasteDetected||pasteRatio>0.7||(words>30&&totalKeystrokes<15),
+    suspiciouslyFast:wpm>180&&words>15,totalKeystrokes
+  };
+}
+function analyzeContent(text){
+  const aiPhrases=['leveraged','utilized','in order to','furthermore','additionally','implemented a solution','ensured that','as a result','streamlined','with respect to'];
+  const lower=text.toLowerCase();
+  const hits=aiPhrases.filter(p=>lower.includes(p)).length;
+  const pronouns=(text.match(/\b(I|my|we|our|me)\b/gi)||[]).length;
+  const words=text.trim().split(/\s+/).length;
+  const aiScore=Math.min(10,hits*2+(pronouns/words<0.03?3:0)+(!(/\d/.test(text))?2:0));
+  return{aiScore,hits,pronounRatio:Math.round(pronouns/words*100)/100};
+}
+
+function addBubble(t,type){
+  const el=document.createElement('div');
+  el.className=type===true?'msg msg-me':type==='warn'?'msg msg-warn':'msg msg-ai';
+  el.textContent=t.replace(/^DONE\s*/,'').trim();
+  document.getElementById('chat-area').appendChild(el);
+  scrollChat();
+}
+function scrollChat(){const c=document.getElementById('chat-area');c.scrollTop=c.scrollHeight;}
+function setQLabel(n){document.getElementById('q-label').textContent=n>TOTAL_Q?'Wrapping up…':`Question ${Math.min(n,TOTAL_Q)} of ${TOTAL_Q}`;}
+function updateDots(n){document.querySelectorAll('.q-dot').forEach((d,i)=>d.classList.toggle('done',i<n));}
+
+// ── CLOUDINARY CONFIG ────────────────────────────────────────────────────
+const CLOUDINARY_CLOUD = 'db4lc7gjf';
+const CLOUDINARY_PRESET = 'fltxxeij';
+
+async function uploadVideoToCloudinary(blob){
+  try{
+    const fd = new FormData();
+    fd.append('file', blob, 'intro.webm');
+    fd.append('upload_preset', CLOUDINARY_PRESET);
+    fd.append('resource_type', 'video');
+    fd.append('folder', 'tangoe-interviews');
+    const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/video/upload`, {
+      method: 'POST', body: fd
+    });
+    const d = await r.json();
+    return d.secure_url || null;
+  }catch(e){
+    console.warn('Cloudinary upload failed:', e);
+    return null;
+  }
+}
+
+// ── VIDEO SELF INTRODUCTION ───────────────────────────────────────────────
+let introRecorder=null,introChunks=[],introBlob=null,introTimerInterval=null,introSeconds=0;
+const MIN_INTRO_SECONDS=120;
+const MAX_INTRO_SECONDS=300;
+
+// ── COMPANY VERIFICATION ENGINE ─────────────────────────────────────────
+
+// Top 100 known Indian IT & global companies (instant match, no API needed)
+const KNOWN_COMPANIES = new Set([
+  'tcs','tata consultancy services','infosys','wipro','hcl','hcl technologies',
+  'tech mahindra','cognizant','accenture','capgemini','ibm','microsoft','google',
+  'amazon','meta','apple','oracle','sap','salesforce','adobe','cisco','dell',
+  'hp','hewlett packard','deloitte','pwc','ey','kpmg','ernst young',
+  'mindtree','mphasis','hexaware','niit technologies','l&t infotech',
+  'larsen toubro','ltimindtree','persistent systems','zensar','cyient',
+  'mastech','igate','patni','syntel','bahwan cybertek','sonata software',
+  'kpit technologies','sasken','geometric','infotech enterprises',
+  'bmc software','ca technologies','emc','vmware','citrix','intuit',
+  'qualcomm','intel','amd','nvidia','broadcom','texas instruments',
+  'flipkart','swiggy','zomato','paytm','phonepe','razorpay','freshworks',
+  'zoho','byju','ola','uber','airbnb','netflix','spotify','twitter','linkedin',
+  'jpmorgan','goldman sachs','morgan stanley','barclays','hsbc','deutsche bank',
+  'standard chartered','citibank','wells fargo','bank of america',
+  'mu sigma','fractal analytics','tiger analytics','latent view','absolutdata',
+  'bosch','siemens','honeywell','ge','3m','johnson controls',
+  'tata motors','mahindra','bajaj','hero','maruti suzuki',
+  'dr reddys','sun pharma','cipla','biocon','divis laboratories',
+  'tanla platforms','mphasis','birlasoft','coforge','happiest minds'
+]);
+
+// Gibberish/fake detection patterns
+function isGibberish(name){
+  const n = name.toLowerCase().replace(/[^a-z]/g,'');
+  if(n.length < 2) return true;
+  // Repeated characters: aaaa, xxxx
+  if(/(.){3,}/.test(n)) return true;
+  // No vowels at all (more than 5 chars)
+  if(n.length > 5 && !/[aeiou]/.test(n)) return true;
+  // Random keyboard patterns
+  if(/^(asdf|qwer|zxcv|1234|abcd|test|fake|dummy|xyz|abc|xxx|yyy|zzz|naa|na|nil|none|null)/.test(n)) return true;
+  return false;
+}
+
+// Check against known companies list
+function checkKnownList(name){
+  const n = name.toLowerCase().trim();
+  // Exact match
+  if(KNOWN_COMPANIES.has(n)) return {found:true, type:'exact'};
+  // Partial match (name contains known company)
+  for(const k of KNOWN_COMPANIES){
+    if(n.includes(k) || k.includes(n)) return {found:true, type:'partial', matched:k};
+  }
+  return {found:false};
+}
+
+// Wikipedia API check
+async function checkWikipedia(name){
+  try{
+    const q = encodeURIComponent(name + ' company');
+    const r = await fetch(`https://en.wikipedia.org/w/api.php?action=search&list=search&srsearch=${q}&srlimit=3&format=json&origin=*`);
+    const d = await r.json();
+    const results = d.query?.search||[];
+    if(!results.length) return {found:false};
+    // Check if top result title closely matches
+    const top = results[0].title.toLowerCase();
+    const nameLower = name.toLowerCase();
+    const words = nameLower.split(/\s+/).filter(w=>w.length>2);
+    const matchScore = words.filter(w=>top.includes(w)).length / Math.max(words.length,1);
+    if(matchScore >= 0.5){
+      return {found:true, title:results[0].title, snippet:results[0].snippet.replace(/<[^>]+>/g,'').substring(0,120)};
+    }
+    return {found:false, closestTitle:results[0].title};
+  }catch(e){ return {found:false, error:e.message}; }
+}
+
+// OpenCorporates API check (free, no key needed for basic search)  
+async function checkOpenCorporates(name){
+  try{
+    const q = encodeURIComponent(name);
+    const r = await fetch(`https://api.opencorporates.com/v0.4/companies/search?q=${q}&jurisdiction_code=in&per_page=3`);
+    if(!r.ok) return {found:false};
+    const d = await r.json();
+    const results = d.results?.companies||[];
+    if(!results.length) return {found:false};
+    const top = results[0].company;
+    return {
+      found:true,
+      name: top.name,
+      jurisdiction: top.jurisdiction_code,
+      status: top.current_status||'Active',
+      number: top.company_number,
+      incorporated: top.incorporation_date
+    };
+  }catch(e){ return {found:false}; }
+}
+
+// REST Countries / domain check via company name
+async function checkClearbit(name){
+  try{
+    // Clearbit Autocomplete — free, no key needed
+    const q = encodeURIComponent(name);
+    const r = await fetch(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${q}`);
+    if(!r.ok) return {found:false};
+    const d = await r.json();
+    if(!d.length) return {found:false};
+    const top = d[0];
+    const nameLower = name.toLowerCase();
+    const topLower = (top.name||"").toLowerCase();
+    // Check name similarity
+    const words = nameLower.split(/\s+/).filter(w=>w.length>2);
+    const matchScore = words.filter(w=>topLower.includes(w)).length / Math.max(words.length,1);
+    if(matchScore >= 0.4 || topLower.includes(nameLower) || nameLower.includes(topLower.split(' ')[0])){
+      return {found:true, name:top.name, domain:top.domain, logo:top.logo};
+    }
+    return {found:false, closest:top.name};
+  }catch(e){ return {found:false}; }
+}
+
+// MAIN VERIFICATION FUNCTION
+let _verifyTimer = null;
+function scheduleCompanyVerify(val){
+  clearTimeout(_verifyTimer);
+  const status = document.getElementById('company-status');
+  const detail = document.getElementById('company-detail');
+  if(!val || val.trim().length < 2){
+    status.textContent = 'Type to verify...';
+    status.style.color = 'var(--muted)';
+    detail.style.display = 'none';
+    window._companyVerifResult = null;
+    return;
+  }
+  status.textContent = '⏳ Verifying...';
+  status.style.color = 'var(--muted)';
+  _verifyTimer = setTimeout(()=>verifyCompany(val.trim()), 900);
+}
+
+async function verifyCompany(name){
+  const status = document.getElementById('company-status');
+  const detail = document.getElementById('company-detail');
+
+  // Step 1: Gibberish check
+  if(isGibberish(name)){
+    const result = {status:'fake', name, reason:'Appears to be a fake or gibberish entry', score:0};
+    window._companyVerifResult = result;
+    status.textContent = '❌ Suspicious entry';
+    status.style.color = 'var(--red,#dc2626)';
+    detail.style.display = 'block';
+    detail.style.background = '#fef2f2';
+    detail.style.border = '1px solid #fca5a5';
+    detail.style.color = '#dc2626';
+    detail.textContent = '⚠️ This looks like a fake entry. Please enter your actual current employer.';
+    return;
+  }
+
+  // Step 2: Known companies list (instant)
+  const known = checkKnownList(name);
+  if(known.found){
+    const result = {status:'verified', name, source:'known_list', score:10,
+      detail: known.type==='exact' ? 'Well-known company — verified' : `Matches known company`};
+    window._companyVerifResult = result;
+    status.textContent = '✅ Verified';
+    status.style.color = 'var(--green,#16a34a)';
+    detail.style.display = 'block';
+    detail.style.background = '#f0fdf4';
+    detail.style.border = '1px solid #86efac';
+    detail.style.color = '#15803d';
+    detail.textContent = `✓ ${name} — recognised company`;
+    return;
+  }
+
+  status.textContent = '🔍 Checking databases...';
+
+  // Step 3: Run all 3 API checks in parallel
+  const [wiki, opencorp, clearbit] = await Promise.all([
+    checkWikipedia(name),
+    checkOpenCorporates(name),
+    checkClearbit(name)
+  ]);
+
+  let score = 0;
+  let sources = [];
+  let displayName = name;
+  let extraInfo = '';
+
+  if(clearbit.found){ score += 4; sources.push('Clearbit'); displayName = clearbit.name; if(clearbit.domain) extraInfo += ` · ${clearbit.domain}`; }
+  if(wiki.found){ score += 3; sources.push('Wikipedia'); if(wiki.title) displayName = wiki.title; }
+  if(opencorp.found){ score += 3; sources.push('OpenCorporates'); if(opencorp.status) extraInfo += ` · ${opencorp.status}`; }
+
+  const result = {status: score>=4?'verified':score>=2?'partial':'not_found',
+    name, displayName, score, sources, extraInfo,
+    wiki, opencorp, clearbit};
+  window._companyVerifResult = result;
+
+  if(score >= 4){
+    status.textContent = `✅ Verified (${sources.join('+')})`;
+    status.style.color = 'var(--green,#16a34a)';
+    detail.style.display = 'block';
+    detail.style.background = '#f0fdf4';
+    detail.style.border = '1px solid #86efac';
+    detail.style.color = '#15803d';
+    detail.textContent = `✓ ${displayName}${extraInfo} — found in ${sources.join(', ')}`;
+  } else if(score >= 2){
+    status.textContent = '⚠️ Partially verified';
+    status.style.color = '#d97706';
+    detail.style.display = 'block';
+    detail.style.background = '#fffbeb';
+    detail.style.border = '1px solid #fcd34d';
+    detail.style.color = '#92400e';
+    detail.textContent = `⚠ ${displayName} — limited records found. Will be flagged for manual verification.`;
+  } else {
+    status.textContent = '❓ Not found';
+    status.style.color = '#6b7394';
+    detail.style.display = 'block';
+    detail.style.background = '#f8f9fc';
+    detail.style.border = '1px solid #e2e6f0';
+    detail.style.color = '#6b7394';
+    detail.textContent = `"${name}" not found in company databases. Could be a small company or startup — will be flagged.`;
+  }
+}
+
+function goBackToCamera(){
+  // Stop any recording in progress
+  if(introRecorder && introRecorder.state === 'recording'){
+    introRecorder.stop();
+    clearInterval(introTimerInterval);
+  }
+  introBlob=null; introSeconds=0;
+  setStep(2);
+  // Re-show camera
+  if(stream){
+    document.getElementById('cam-video').srcObject=stream;
+    document.getElementById('cam-overlay').style.display='none';
+    document.getElementById('cam-status').style.display='block';
+    document.getElementById('cam-btn').style.display='none';
+    document.getElementById('cam-ready').style.display='block';
+  }
+}
+
+function startIntroRecording(){
+  if(!stream){alert('Camera not available. Please go back and enable camera.');return;}
+  introChunks=[];introSeconds=0;
+  try{introRecorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8,opus'});}
+  catch(e){try{introRecorder=new MediaRecorder(stream,{mimeType:'video/webm'});}
+  catch(e2){introRecorder=new MediaRecorder(stream);}}
+
+  introRecorder.ondataavailable=e=>{if(e.data.size>0)introChunks.push(e.data);};
+  introRecorder.onstop=()=>{
+    introBlob=new Blob(introChunks,{type:'video/webm'});
+    const url=URL.createObjectURL(introBlob);
+    const introVid=document.getElementById('intro-video');
+    introVid.src=url;
+    document.getElementById('intro-playback').style.display='block';
+    document.getElementById('intro-preview').style.display='none';
+    document.getElementById('intro-rec-badge').style.display='none';
+    document.getElementById('intro-stop-btn').style.display='none';
+    document.getElementById('intro-redo-btn').style.display='inline-block';
+    if(introSeconds>=MIN_INTRO_SECONDS){
+      document.getElementById('intro-proceed-btn').style.display='inline-block';
+      document.getElementById('intro-min-warn').style.display='none';
+    }else{
+      document.getElementById('intro-min-warn').style.display='block';
+      document.getElementById('intro-proceed-btn').style.display='none';
+    }
+  };
+
+  introRecorder.start(1000);
+  const prev=document.getElementById('intro-preview');
+  prev.style.display='block';
+  if(stream){prev.srcObject=stream;prev.muted=true;prev.play().catch(e=>{});}
+  document.getElementById('intro-start-btn').style.display='none';
+  document.getElementById('intro-stop-btn').style.display='inline-block';
+  document.getElementById('intro-rec-badge').style.display='block';
+  document.getElementById('intro-min-warn').style.display='none';
+
+  introTimerInterval=setInterval(()=>{
+    introSeconds++;
+    const m=Math.floor(introSeconds/60);
+    const s=introSeconds%60;
+    document.getElementById('intro-timer').textContent=m+':'+String(s).padStart(2,'0');
+    if(introSeconds>=MAX_INTRO_SECONDS)stopIntroRecording();
+    if(introSeconds===MIN_INTRO_SECONDS)document.getElementById('intro-timer').style.background='rgba(22,163,74,.8)';
+  },1000);
+}
+
+function stopIntroRecording(){
+  if(introRecorder&&introRecorder.state==='recording'){
+    introRecorder.stop();
+    clearInterval(introTimerInterval);
+  }
+}
+
+function redoIntro(){
+  introBlob=null;introSeconds=0;
+  document.getElementById('intro-timer').textContent='0:00';
+  document.getElementById('intro-timer').style.background='rgba(0,0,0,.6)';
+  document.getElementById('intro-playback').style.display='none';
+  document.getElementById('intro-preview').style.display='block';
+  document.getElementById('intro-start-btn').style.display='inline-block';
+  document.getElementById('intro-stop-btn').style.display='none';
+  document.getElementById('intro-redo-btn').style.display='none';
+  document.getElementById('intro-proceed-btn').style.display='none';
+  document.getElementById('intro-min-warn').style.display='none';
+  document.getElementById('intro-rec-badge').style.display='none';
+}
+
+async function proceedToInterview(){
+  // Upload intro video to Cloudinary before starting interview
+  if(introBlob){
+    const btn=document.getElementById("intro-proceed-btn");
+    btn.disabled=true;
+    btn.innerHTML='<span class="spin"></span> Uploading video...';
+    cur.introVideoUrl = await uploadVideoToCloudinary(introBlob);
+    btn.innerHTML = cur.introVideoUrl
+      ? '✅ Video uploaded! Starting...'
+      : '⚠️ Upload failed. Starting anyway...';
+    await new Promise(r=>setTimeout(r,800));
+  }
+  setStep(4);
+  if(stream){
+    const v2=document.getElementById('cam-video2');
+    if(v2)v2.srcObject=stream;
+    const cs=document.getElementById('cam-status2');
+    if(cs)cs.style.display='block';
+    startPhotoCapture();
+  }
+  const dots=document.getElementById('q-dots');
+  if(dots)dots.innerHTML=Array(TOTAL_Q).fill('<div class="q-dot"></div>').join('');
+  initTypingTracker();
+  await new Promise(r=>setTimeout(r,400));
+
+  const chatArea=document.getElementById('chat-area');
+  const think=document.createElement('div');
+  think.className='msg msg-ai';
+  think.innerHTML='<span class="spin" style="border-top-color:#999"></span> Starting interview...';
+  chatArea.appendChild(think);
+
+  const initMsg=`Candidate: ${cur.name} | Role: ${ROLE} | Exp: ${cur.yoe||''} | IT exp: ${cur.exp||''} | Skills: ${cur.skills||''} | Location: ${cur.location||''}`;
+  chat.push({role:'user',content:initMsg});
+
+  try{
+    const reply=await callClaude();
+    think.remove();
+    if(reply.trimStart().startsWith('DONE')){await finish(reply);return;}
+    chat.push({role:'assistant',content:reply});
+    tx.push({q:reply,a:null});
+    addBubble(reply,false);
+    setQLabel(1);
+  }catch(e){
+    think.textContent='Error starting interview: '+e.message;
+  }
+}
+
+</script>
+</body>
+</html>
