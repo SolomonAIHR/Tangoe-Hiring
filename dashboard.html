@@ -328,7 +328,10 @@ function openCand(idx){
   document.getElementById('m-name').textContent=cand.name||'Candidate';
   const cvStatus = cand.companyVerification?.status;
   const cvIcon = cvStatus==='verified'?'✅':cvStatus==='fake'?'❌':cvStatus==='not_found'||cvStatus==='partial'?'⚠️':'';
-  document.getElementById('m-meta').textContent=`${cand.yoe||''} · ${cand.company?cvIcon+' '+cand.company+' · ':''}${cand.tool||''} · ${cand.email||''}`;
+  const resumeBtn = cand.resumeUrl
+    ? `<a href="${cand.resumeUrl}" target="_blank" style="margin-left:8px;background:rgba(79,142,255,.12);border:1px solid rgba(79,142,255,.3);color:var(--accent);padding:3px 10px;border-radius:6px;font-size:11px;text-decoration:none">📄 Download Resume</a>`
+    : '';
+  document.getElementById('m-meta').innerHTML=`${cand.yoe||''} · ${cand.company?cvIcon+' '+cand.company+' · ':''}${cand.tool||''} · ${cand.email||''} ${resumeBtn}`;
   document.getElementById('m-score').textContent=a.score||'—';
 
   const v=a.verdict||'Pending';
@@ -408,9 +411,10 @@ function openCand(idx){
     const matchText = gps.locationMismatch
       ? `Mismatch — GPS shows <strong>${gps.display}</strong> but selected <strong>${cand.location}</strong>`
       : `Verified — GPS: <strong>${gps.display}</strong> matches selected city`;
+    const mapUrl = `https://www.google.com/maps?q=${gps.lat},${gps.lng}`;
     gpsHtml = `<div class="flag-item ${matchColor}">
       <span class="flag-icon">${matchIcon}</span>
-      <span>📍 Location: ${matchText} (±${gps.accuracy}m accuracy)</span>
+      <span>📍 Location: ${matchText} (±${gps.accuracy}m) <a href="${mapUrl}" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none;margin-left:6px;background:rgba(79,142,255,.1);border:1px solid rgba(79,142,255,.2);padding:2px 8px;border-radius:4px">🗺 View Map</a></span>
     </div>`;
   } else if(gps.status === 'denied'){
     gpsHtml = `<div class="flag-item flag-warn">
@@ -487,80 +491,127 @@ function rejectCandidate(){
   }
 }
 
-// ── DOWNLOAD INDIVIDUAL REPORT (TXT) ─────────────────────────────────────
+// ── DOWNLOAD INDIVIDUAL REPORT (HTML) ────────────────────────────────────
 function downloadReport(){
   if(!activeCand) return;
   const c = activeCand.candidate||{};
   const a = activeCand.assessment||{};
   const gps = c.gps||{};
+  const cv = c.companyVerification||{};
   const flags = a.authenticityFlags||[];
+  const photos = activeCand.photos||[];
+  const transcript = activeCand.transcript||[];
   const time = activeCand.completedAt ? new Date(activeCand.completedAt).toLocaleString('en-IN') : '—';
+  const scoreColor = (a.score||0)>=8?'#16a34a':(a.score||0)>=6?'#d97706':'#dc2626';
+  const verdictColor = a.verdict==='Strong Yes'||a.verdict==='Yes'?'#16a34a':a.verdict==='Maybe'?'#d97706':'#dc2626';
 
-  const lines = [
-    '╔══════════════════════════════════════════════════════════════╗',
-    '║          TANGOE AI HIRING — CANDIDATE INTERVIEW REPORT       ║',
-    '╚══════════════════════════════════════════════════════════════╝',
-    '',
-    '━━━ CANDIDATE DETAILS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-    `Name          : ${c.name||'—'}`,
-    `Email         : ${c.email||'—'}`,
-    `Mobile        : ${c.mobile||'—'}`,
-    `Experience    : ${c.yoe||'—'}`,
-    `IT Experience : ${c.exp||'—'}`,
-    `Location      : ${c.location||'—'}`,
-    `Skills        : ${c.skills||'—'}`,
-    `Resume        : ${c.resumeName||'—'} (${c.resumeSize||'—'})`,
-    `Company       : ${c.company||'—'} [${cv?.status?.toUpperCase()||'NOT CHECKED'}${cv?.sources?' via '+cv.sources.join('+'):''}]`,
-    `GPS           : ${gps.status==='captured' ? gps.display + (gps.locationMismatch?' ⚠ MISMATCH':' ✓ Verified') : gps.status||'Not captured'}`,
-    `Completed     : ${time}`,
-    '',
-    '━━━ AI ASSESSMENT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-    `Score         : ${a.score||'—'} / 10`,
-    `Verdict       : ${a.verdict||'Pending'}`,
-    `JD Match      : ${a.jdMatch||'—'}%`,
-    '',
-    `Summary:`,
-    a.summary||'Not available.',
-    '',
-    `Strengths:`,
-    ...(a.strengths||[]).map(s=>`  • ${s}`),
-    '',
-    `Concerns:`,
-    ...(a.concerns||[]).map(s=>`  • ${s}`),
-    '',
-    '━━━ PROCTORING & AUTHENTICITY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-    `Authenticity Score : ${a.authenticityScore||10} / 10`,
-    `Tab Switches       : ${a.tabSwitches||0}`,
-    `Camera Skipped     : ${a.cameraSkipped?'Yes':'No'}`,
-    `Photos Captured    : ${(activeCand.photos||[]).length}`,
-    `Video Intro        : ${c.introVideoUrl ? c.introVideoUrl : 'Not available'}`,
-    '',
-    flags.length ? `Flags (${flags.length}):` : 'Flags: None',
-    ...flags.map((f,i)=>`  ${i+1}. ${f}`),
-    '',
-    '━━━ FULL TRANSCRIPT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-    ...(activeCand.transcript||[]).map((t,i)=>[
-      `Q${i+1}: ${t.q||''}`,
-      '',
-      `Answer${t.flags?.length?' [FLAGGED: '+t.flags.join(', ')+']':''}: ${t.a||'(no answer)'}`,
-      '',
-      '────────────────────────────────────────────────────────────────',
-      ''
-    ].join('\n')),
-    '',
-    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-    `Generated by Tangoe AI Hiring System · ${new Date().toLocaleString('en-IN')}`,
-    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-  ];
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/>
+<title>Tangoe Interview Report — ${c.name||'Candidate'}</title>
+<style>
+  body{font-family:'Segoe UI',Arial,sans-serif;max-width:800px;margin:0 auto;padding:32px;color:#1f2937;background:#fff}
+  h1{font-size:22px;color:#0057ff;margin-bottom:4px}
+  .sub{color:#6b7280;font-size:13px;margin-bottom:24px}
+  .section{margin-bottom:24px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
+  .section-title{background:#f9fafb;padding:10px 16px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;border-bottom:1px solid #e5e7eb}
+  .section-body{padding:16px}
+  .row{display:flex;gap:8px;margin-bottom:8px;font-size:14px}
+  .label{color:#6b7280;min-width:140px;font-weight:500}
+  .val{color:#1f2937}
+  .score-big{font-size:42px;font-weight:700;color:${scoreColor}}
+  .verdict{display:inline-block;padding:4px 14px;border-radius:999px;font-weight:600;font-size:13px;background:${verdictColor}22;color:${verdictColor};border:1px solid ${verdictColor}44}
+  .flag{background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:6px 12px;font-size:12px;color:#92400e;margin-bottom:6px}
+  .clean{background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:6px 12px;font-size:12px;color:#15803d;margin-bottom:6px}
+  .qa{background:#f9fafb;border-radius:8px;padding:14px;margin-bottom:12px}
+  .q{font-size:13px;color:#374151;font-weight:600;margin-bottom:8px}
+  .ans{font-size:13px;color:#1f2937;background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:10px 12px;line-height:1.6}
+  .photo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .photo-grid img{width:100%;border-radius:6px;border:1px solid #e5e7eb}
+  .footer{text-align:center;font-size:11px;color:#9ca3af;margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb}
+  .strength{color:#15803d;font-size:13px;padding:4px 0}
+  .concern{color:#dc2626;font-size:13px;padding:4px 0}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+  .stat-box{text-align:center;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb}
+  .stat-val{font-size:28px;font-weight:700}
+  .stat-lbl{font-size:11px;color:#6b7280;margin-top:4px}
+</style></head><body>
+<h1>🏢 Tangoe AI Hiring System</h1>
+<div class="sub">Candidate Interview Report · Generated ${new Date().toLocaleString('en-IN')}</div>
 
-  const text = lines.join('\n');
-  const blob = new Blob([text], {type:'text/plain'});
-  const url = URL.createObjectURL(blob);
+<div class="section">
+  <div class="section-title">Candidate Details</div>
+  <div class="section-body">
+    <div class="row"><span class="label">Full Name</span><span class="val"><strong>${c.name||'—'}</strong></span></div>
+    <div class="row"><span class="label">Email</span><span class="val">${c.email||'—'}</span></div>
+    <div class="row"><span class="label">Mobile</span><span class="val">${c.mobile||'—'}</span></div>
+    <div class="row"><span class="label">Experience</span><span class="val">${c.yoe||'—'}</span></div>
+    <div class="row"><span class="label">IT Experience</span><span class="val">${c.exp||'—'}</span></div>
+    <div class="row"><span class="label">Location</span><span class="val">${c.location||'—'}</span></div>
+    <div class="row"><span class="label">Skills</span><span class="val">${c.skills||'—'}</span></div>
+    <div class="row"><span class="label">Current Company</span><span class="val">${c.company||'—'} <span style="font-size:11px;color:${cv.status==='verified'?'#15803d':cv.status==='fake'?'#dc2626':'#d97706'}">[${cv.status?.toUpperCase()||'NOT CHECKED'}]</span></span></div>
+    <div class="row"><span class="label">Resume</span><span class="val">${c.resumeName||'—'} (${c.resumeSize||'—'}) ${c.resumeUrl?'<a href="'+c.resumeUrl+'" target="_blank" style="color:#0057ff;margin-left:8px">📄 Download</a>':''}</span></div>
+    <div class="row"><span class="label">GPS Location</span><span class="val">${gps.status==='captured'?(gps.display+' '+(gps.locationMismatch?'⚠ MISMATCH':'✓ Verified')+' <a href="https://www.google.com/maps?q='+gps.lat+','+gps.lng+'" target="_blank" style="color:#0057ff">🗺 Map</a>'):gps.status||'Not captured'}</span></div>
+    <div class="row"><span class="label">Completed</span><span class="val">${time}</span></div>
+    ${c.introVideoUrl?`<div class="row"><span class="label">Video Intro</span><span class="val"><a href="${c.introVideoUrl}" target="_blank" style="color:#0057ff">▶ Watch Video</a></span></div>`:''}
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">AI Assessment</div>
+  <div class="section-body">
+    <div class="stats">
+      <div class="stat-box"><div class="stat-val" style="color:${scoreColor}">${a.score||'—'}</div><div class="stat-lbl">Score /10</div></div>
+      <div class="stat-box"><div style="margin-top:8px"><span class="verdict">${a.verdict||'Pending'}</span></div><div class="stat-lbl" style="margin-top:8px">Verdict</div></div>
+      <div class="stat-box"><div class="stat-val" style="color:#0057ff">${a.jdMatch||'—'}%</div><div class="stat-lbl">JD Match</div></div>
+    </div>
+    <div style="font-size:13px;line-height:1.7;color:#374151;margin-bottom:16px">${a.summary||'Assessment not available.'}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:8px">✓ STRENGTHS</div>
+        ${(a.strengths||[]).map(s=>`<div class="strength">• ${s}</div>`).join('')||'<div style="color:#9ca3af;font-size:13px">None noted</div>'}
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:8px">⚠ CONCERNS</div>
+        ${(a.concerns||[]).map(s=>`<div class="concern">• ${s}</div>`).join('')||'<div style="color:#9ca3af;font-size:13px">None noted</div>'}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Proctoring & Authenticity</div>
+  <div class="section-body">
+    ${flags.length?flags.map(f=>`<div class="flag">⚠️ ${f}</div>`).join(''):'<div class="clean">✓ No authenticity flags detected</div>'}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px">
+      <div class="stat-box"><div class="stat-val" style="font-size:20px">${a.tabSwitches||0}</div><div class="stat-lbl">Tab Switches</div></div>
+      <div class="stat-box"><div class="stat-val" style="font-size:20px">${photos.length}</div><div class="stat-lbl">Photos Captured</div></div>
+      <div class="stat-box"><div class="stat-val" style="font-size:20px">${a.authenticityScore||10}/10</div><div class="stat-lbl">Auth Score</div></div>
+    </div>
+    ${photos.length?`<div style="margin-top:16px"><div style="font-size:12px;font-weight:700;color:#6b7280;margin-bottom:8px">WEBCAM CAPTURES</div><div class="photo-grid">${photos.slice(0,8).map(p=>`<img src="${p.dataUrl}" alt="capture"/>`).join('')}</div></div>`:''}
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Full Interview Transcript</div>
+  <div class="section-body">
+    ${transcript.map((t,i)=>`
+    <div class="qa">
+      <div class="q">Q${i+1}: ${t.q||''}</div>
+      <div class="ans">${t.a||'<em style="color:#9ca3af">No answer provided</em>'}${t.flags?.length?`<div style="font-size:11px;color:#d97706;margin-top:6px">⚠️ ${t.flags.join(' · ')}</div>`:''}</div>
+    </div>`).join('')}
+  </div>
+</div>
+
+<div class="footer">Tangoe AI Hiring System · Confidential · ${new Date().toLocaleDateString('en-IN')}</div>
+</body></html>`;
+
+  const blob = new Blob([html], {type:'text/html'});
+  const url2 = URL.createObjectURL(blob);
   const a2 = document.createElement('a');
-  a2.href = url;
-  a2.download = `Tangoe_Interview_${(c.name||'Candidate').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.txt`;
+  a2.href = url2;
+  a2.download = `Tangoe_Report_${(c.name||'Candidate').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.html`;
   a2.click();
-  URL.revokeObjectURL(url);
+  URL.revokeObjectURL(url2);
 }
 
 // ── DOWNLOAD ALL CANDIDATES AS CSV ───────────────────────────────────────

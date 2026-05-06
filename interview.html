@@ -121,7 +121,7 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
 
       <div class="g2">
         <div class="fl"><label>Full name *</label><input type="text" id="c-name" placeholder="Your full name"/></div>
-        <div class="fl"><label>Mobile number * (10 digits)</label><input type="tel" id="c-mobile" placeholder="9876543210" maxlength="10" pattern="[0-9]{10}" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/></div>
+        <div class="fl"><label>Mobile number * (10 digits)</label><input type="tel" id="c-mobile" placeholder="e.g. 9876543210" maxlength="10" pattern="[0-9]{10}" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/></div>
       </div>
       <div class="fl"><label>Email address *</label><input type="email" id="c-email" placeholder="your@email.com"/><div id="email-err" style="color:#dc2626;font-size:12px;margin-top:4px;display:none">Please enter a valid email address</div></div>
 
@@ -267,6 +267,22 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
       <div class="q-bar" style="margin-top:10px">
         <span style="font-size:12px;color:var(--muted)" id="q-label">Question 1</span>
         <div class="q-dots" id="q-dots"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4.5: Review answers before submit -->
+  <div id="s4r" style="display:none">
+    <div class="card">
+      <div class="card-title">📋 Review your answers</div>
+      <div class="card-sub">Please review your responses before submitting. Once submitted, you cannot change your answers.</div>
+      <div id="review-list" style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;max-height:400px;overflow-y:auto"></div>
+      <div style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--amber);margin-bottom:20px">
+        ⚠️ After submitting, this interview link cannot be used again.
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-blue" onclick="submitFinal()" id="submit-final-btn">✅ Submit Interview →</button>
+        <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--muted)" onclick="goBackToInterview()">← Edit answers</button>
       </div>
     </div>
   </div>
@@ -451,6 +467,46 @@ document.addEventListener('visibilitychange',()=>{
   }
 });
 
+// ✅ FIX 2: Camera switch-off detection during interview + video intro
+function startCameraMonitor(){
+  setInterval(()=>{
+    if(!stream) return;
+    const videoTrack = stream.getVideoTracks()[0];
+    if(!videoTrack) return;
+    // Check if camera was manually disabled
+    if(videoTrack.readyState === 'ended' || videoTrack.muted){
+      // Flag it
+      if(qCount > 0){
+        tabSwitchCount++; // reuse tab switch counter
+        addBubble('⚠️ Camera interruption detected. Please keep your camera on throughout the interview.','warn');
+      }
+      // Show warning banner
+      const banner = document.getElementById('cheat-banner');
+      if(banner){
+        banner.style.display='flex';
+        banner.innerHTML='⚠️ <strong>Camera turned off</strong> — This has been flagged. Please re-enable your camera to continue.';
+      }
+    }
+  }, 3000); // check every 3 seconds
+}
+
+// Monitor stream track end events
+function attachCameraEndListener(){
+  if(!stream) return;
+  stream.getVideoTracks().forEach(track => {
+    track.addEventListener('ended', ()=>{
+      if(qCount > 0 || introRecorder){
+        tabSwitchCount++;
+        const banner = document.getElementById('cheat-banner');
+        if(banner){
+          banner.style.display='flex';
+          banner.innerHTML='⚠️ <strong>Camera was turned off</strong> — Flagged in report. Interview will continue but this will be noted.';
+        }
+      }
+    });
+  });
+}
+
 function setStep(n){
   [1,2,3,4,5].forEach(i=>{
     const si=document.getElementById('si-'+i);
@@ -540,35 +596,42 @@ async function goCamera(){
 
   if(gpsBtn){ gpsBtn.disabled=false; gpsBtn.textContent='Continue to camera check →'; }
 
-  const reader=new FileReader();
-  reader.onload=function(){
-    const companyRaw = document.getElementById('c-company').value.trim();
-    const companyVerif = window._companyVerifResult || {status:'not_checked', name: companyRaw};
-    cur={
-      name,mobile,email,skills,exp,location,
-      company: companyRaw,
-      companyVerification: companyVerif,
-      yoe:document.getElementById('c-yoe').value,
-      tool:skills,
-      resumeName:resumeFile.name,
-      resumeSize:Math.round(resumeFile.size/1024)+'KB',
-      gps: gpsData,
-      start:new Date().toISOString()
-    };
-    setStep(2);
-    // ✅ If stream already active (came back from edit), show camera ready immediately
-    setTimeout(()=>{
-      if(stream && stream.getTracks().some(t=>t.readyState==='live')){
-        const v=document.getElementById('cam-video');
-        if(v) v.srcObject=stream;
-        document.getElementById('cam-overlay').style.display='none';
-        document.getElementById('cam-status').style.display='block';
-        document.getElementById('cam-btn').style.display='none';
-        document.getElementById('cam-ready').style.display='block';
-      }
-    }, 150);
+  // Show uploading state
+  const continueBtn = document.querySelector('button[onclick="goCamera()"]');
+  if(continueBtn){ continueBtn.disabled=true; continueBtn.textContent='⏫ Uploading resume...'; }
+
+  // Upload resume to Cloudinary
+  const resumeUpload = await uploadResumeToCloudinary(resumeFile);
+
+  if(continueBtn){ continueBtn.disabled=false; continueBtn.textContent='Continue to camera check →'; }
+
+  const companyRaw = document.getElementById('c-company').value.trim();
+  const companyVerif = window._companyVerifResult || {status:'not_checked', name: companyRaw};
+  cur={
+    name,mobile,email,skills,exp,location,
+    company: companyRaw,
+    companyVerification: companyVerif,
+    yoe:document.getElementById('c-yoe').value,
+    tool:skills,
+    resumeName:resumeFile.name,
+    resumeSize:Math.round(resumeFile.size/1024)+'KB',
+    resumeUrl: resumeUpload ? resumeUpload.url : null,
+    gps: gpsData,
+    start:new Date().toISOString()
   };
-  reader.readAsDataURL(resumeFile);
+
+  setStep(2);
+  // ✅ If stream already active (came back from edit), show camera ready immediately
+  setTimeout(()=>{
+    if(stream && stream.getTracks().some(t=>t.readyState==='live')){
+      const v=document.getElementById('cam-video');
+      if(v) v.srcObject=stream;
+      document.getElementById('cam-overlay').style.display='none';
+      document.getElementById('cam-status').style.display='block';
+      document.getElementById('cam-btn').style.display='none';
+      document.getElementById('cam-ready').style.display='block';
+    }
+  }, 150);
 }
 
 async function resetForm(){
@@ -606,6 +669,9 @@ async function startCamera(){
     document.getElementById('cam-status').style.display='block';
     document.getElementById('cam-btn').style.display='none';
     document.getElementById('cam-ready').style.display='block';
+    // Start monitoring camera for manual switch-off
+    attachCameraEndListener();
+    startCameraMonitor();
   }catch(e){
     alert('Camera access denied. Please allow camera access to continue.');
   }
@@ -683,21 +749,32 @@ async function sendAns(){
   chat.push({role:'user',content:a});
   resetTypingTracker();
 
-  // ✅ FIX: Force finish after TOTAL_Q answers regardless of Claude response
+  // ✅ FIX: Force finish after TOTAL_Q answers
   if(qCount >= TOTAL_Q){
-    // Disable input immediately
     const inp2=document.getElementById('ans');
     const btn2=document.getElementById('send-btn');
     inp2.disabled=true;
     btn2.disabled=true;
-    btn2.innerHTML='<span class="spin"></span> Finishing…';
-    // Get final assessment from Claude then force exit
+    btn2.innerHTML='<span class="spin"></span> Generating assessment…';
+
+    // Add explicit instruction to Claude to produce DONE + JSON now
+    chat.push({role:'assistant', content:'I have asked all required questions. Let me now provide my assessment.'});
+    chat.push({role:'user', content:'Please provide your final assessment now in the required DONE + JSON format.'});
+
     const finalReply = await callClaude(null);
     if(finalReply.trimStart().startsWith('DONE')){
-      await finish(finalReply);
+      // Show review step before submitting
+      showReviewStep(finalReply);
     } else {
-      // Force finish even if Claude didn't say DONE
-      await finish('DONE\n{"verdict":"Pending","score":5,"strengths":[],"concerns":[],"jdMatch":50,"summary":"Interview completed. Assessment pending review."}');
+      // Try to extract JSON from non-DONE response
+      const jsonMatch = finalReply.match(/\{[\s\S]*"verdict"[\s\S]*\}/);
+      if(jsonMatch){
+        showReviewStep('DONE\n' + jsonMatch[0]);
+      } else {
+        // Ask again more explicitly
+        const retryReply = await callClaude('IMPORTANT: You must now output DONE on line 1 and the JSON assessment on line 2. Do it now.');
+        showReviewStep(retryReply.trimStart().startsWith('DONE') ? retryReply : 'DONE\n{"verdict":"Pending","score":5,"strengths":["Completed interview"],"concerns":["Assessment pending"],"jdMatch":50,"summary":"Candidate completed all interview questions. Manual review recommended."}');
+      }
     }
     return;
   }
@@ -848,12 +925,83 @@ function addBubble(t,type){
   scrollChat();
 }
 function scrollChat(){const c=document.getElementById('chat-area');c.scrollTop=c.scrollHeight;}
+
+// ── REVIEW STEP ───────────────────────────────────────────────────────────
+let _pendingFinishReply = '';
+
+function showReviewStep(reply){
+  _pendingFinishReply = reply;
+  // Build review list
+  const list = document.getElementById('review-list');
+  list.innerHTML = tx.map((t,i) => `
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+      <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">Question ${i+1}</div>
+      <div style="font-size:13px;color:var(--ink);margin-bottom:8px;line-height:1.6">${t.q||''}</div>
+      <div style="font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--ink);line-height:1.6">
+        ${t.a || '<em style="color:var(--muted)">No answer provided</em>'}
+        ${t.flags?.length ? `<div style="font-size:11px;color:var(--amber);margin-top:6px">⚠️ ${t.flags.join(' · ')}</div>` : ''}
+      </div>
+    </div>`).join('');
+
+  // Show review step
+  [1,2,3,4,5].forEach(i=>{
+    const el=document.getElementById('s'+i);
+    if(el) el.style.display='none';
+  });
+  document.getElementById('s4r').style.display='block';
+
+  // Update step indicators
+  ['si-1','si-2','si-3','si-4'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ el.classList.remove('active'); el.classList.add('done'); }
+    const sd=el?.querySelector('.s-dot');
+    if(sd) sd.textContent='✓';
+  });
+}
+
+async function submitFinal(){
+  const btn=document.getElementById('submit-final-btn');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spin"></span> Submitting…';
+  await finish(_pendingFinishReply);
+}
+
+function goBackToInterview(){
+  document.getElementById('s4r').style.display='none';
+  document.getElementById('s4').style.display='block';
+  // Re-enable input
+  const inp=document.getElementById('ans');
+  const btn=document.getElementById('send-btn');
+  if(inp){ inp.disabled=false; inp.value=''; }
+  if(btn){ btn.disabled=false; btn.textContent='Send →'; }
+  _pendingFinishReply='';
+}
 function setQLabel(n){document.getElementById('q-label').textContent=n>TOTAL_Q?'Wrapping up…':`Question ${Math.min(n,TOTAL_Q)} of ${TOTAL_Q}`;}
 function updateDots(n){document.querySelectorAll('.q-dot').forEach((d,i)=>d.classList.toggle('done',i<n));}
 
 // ── CLOUDINARY CONFIG ────────────────────────────────────────────────────
 const CLOUDINARY_CLOUD = 'db4lc7gjf';
 const CLOUDINARY_PRESET = 'fltxxeij';
+
+async function uploadResumeToCloudinary(file){
+  try{
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', CLOUDINARY_PRESET);
+    fd.append('resource_type', 'raw'); // raw = any file type
+    fd.append('folder', 'tangoe-resumes');
+    fd.append('public_id', 'resume_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g,'_'));
+    const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/raw/upload`, {
+      method: 'POST', body: fd
+    });
+    const d = await r.json();
+    if(d.secure_url) return { url: d.secure_url, name: file.name, size: Math.round(file.size/1024)+'KB' };
+    return null;
+  }catch(e){
+    console.warn('Resume upload failed:', e);
+    return null;
+  }
+}
 
 async function uploadVideoToCloudinary(blob){
   try{
