@@ -158,6 +158,19 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
         <input type="text" id="c-exp" placeholder="e.g. 5 years 3 months"/>
       </div>
 
+      <div class="fl">
+        <label>Current company name *</label>
+        <div style="position:relative">
+          <input type="text" id="c-company" placeholder="e.g. Infosys, TCS, Wipro, Startup name..."
+            oninput="scheduleCompanyVerify(this.value)"
+            style="padding-right:140px"/>
+          <div id="company-status" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:500;white-space:nowrap;color:var(--muted)">
+            Type to verify...
+          </div>
+        </div>
+        <div id="company-detail" style="font-size:12px;margin-top:5px;padding:8px 12px;border-radius:6px;display:none"></div>
+      </div>
+
       <div class="fl"><label>Upload resume * (PDF or Word)</label>
         <input type="file" id="c-resume" accept=".pdf,.doc,.docx" style="background:var(--bg);padding:8px"/>
         <div id="resume-err" style="color:#dc2626;font-size:12px;margin-top:4px;display:none">Please upload your resume</div>
@@ -169,8 +182,12 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
         <li><span>⏱</span><span>Copied or pasted answers will be flagged automatically.</span></li>
         <li><span>🔇</span><span>Find a quiet space. Tab switching will be detected and reported.</span></li>
         <li><span>🎥</span><span>A 3-5 minute video self-introduction is mandatory before the interview.</span></li>
+        <li><span>📍</span><span>Location verification is required — please allow GPS access when prompted.</span></li>
       </ul>
-      <button class="btn btn-blue" onclick="goCamera()">Continue to camera check →</button>
+      <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
+        <button class="btn btn-blue" onclick="goCamera()">Continue to camera check →</button>
+        <button class="btn" onclick="resetForm()" style="background:#fff;border:1px solid var(--border);color:var(--muted)">↺ Reset form</button>
+      </div>
     </div>
   </div>
 
@@ -195,7 +212,10 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
         <div style="background:var(--green-bg);border:1px solid var(--green-border);border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:var(--green)">
           ✓ Camera active — you're all set
         </div>
-        <button class="btn btn-blue" onclick="startInterview()">Begin video intro →</button>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-blue" onclick="startInterview()">Begin video intro →</button>
+          <button class="btn" onclick="goBackToDetails()" style="background:#fff;border:1px solid var(--border);color:var(--muted)">← Edit details</button>
+        </div>
       </div>
     </div>
   </div>
@@ -224,6 +244,7 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
         <button class="btn" id="intro-stop-btn" onclick="stopIntroRecording()" style="display:none;background:#dc2626;color:#fff;border:none">⏹ Stop recording</button>
         <button class="btn" id="intro-redo-btn" onclick="redoIntro()" style="display:none;background:#fff;border:1px solid var(--border);color:var(--ink)">↺ Re-record</button>
         <button class="btn btn-blue" id="intro-proceed-btn" onclick="proceedToInterview()" style="display:none">Continue to interview →</button>
+        <button class="btn" id="intro-back-btn" onclick="goBackToCamera()" style="background:#fff;border:1px solid var(--border);color:var(--muted)">← Back to camera</button>
       </div>
     </div>
   </div>
@@ -233,15 +254,12 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
     <div id="cheat-banner" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:10px;padding:10px 16px;font-size:13px;color:var(--amber);margin-bottom:12px"></div>
     <div class="card">
       <div class="card-title" id="int-label">Tangoe Interview</div>
-      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-        <div class="camera-wrap" style="width:120px;max-width:120px;flex-shrink:0;aspect-ratio:4/3;border-radius:8px">
-          <video id="cam-video2" autoplay muted playsinline webkit-playsinline style="width:100%;height:100%;object-fit:cover;border-radius:8px"></video>
-          <div id="cam-status2" style="position:absolute;top:6px;left:6px;font-size:10px;font-weight:600;padding:3px 8px;border-radius:999px;background:rgba(22,163,74,.9);color:#fff;display:none">● REC</div>
-        </div>
-        <div style="flex:1;display:flex;flex-direction:column">
-          <div class="chat-area" id="chat-area"></div>
-        </div>
+      <!-- Camera above chat - full width -->
+      <div style="position:relative;width:100%;max-width:320px;margin:0 auto 14px;border-radius:10px;overflow:hidden;background:#000;aspect-ratio:16/9">
+        <video id="cam-video2" autoplay muted playsinline webkit-playsinline style="width:100%;height:100%;object-fit:cover;display:block"></video>
+        <div id="cam-status2" style="position:absolute;top:8px;left:8px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;background:rgba(22,163,74,.9);color:#fff;display:none">● REC</div>
       </div>
+      <div class="chat-area" id="chat-area"></div>
       <div class="chat-row">
         <input type="text" id="ans" placeholder="Type your answer and press Enter…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAns()}"/>
         <button class="btn btn-blue" id="send-btn" onclick="sendAns()">Send →</button>
@@ -268,52 +286,57 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
 const API = "/api/chat";
 const MODEL = "claude-haiku-4-5-20251001";
 
-// ✅ FIXED: Load config from URL-embedded base64 — works on ANY device, any browser
+// ✅ Load config — supports short ID (Upstash), cfg64 (base64), and old URL params
 const urlParams = new URLSearchParams(window.location.search);
 let config = {};
 
-// PRIMARY: cfg64 param — full config encoded in URL by admin panel
-const cfg64 = urlParams.get('cfg64');
-if(cfg64){
-  try{
-    config = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(cfg64)))));
-  }catch(e){ console.warn('cfg64 parse error',e); }
-}
+// Async config loader — runs immediately
+async function loadConfig(){
+  // PRIMARY: short ID from Upstash Redis → clean short URL
+  const shortId = urlParams.get('id');
+  if(shortId){
+    try{
+      const r = await fetch(`/api/get-jd?id=${shortId}`);
+      if(r.ok){ config = await r.json(); return; }
+    }catch(e){ console.warn('get-jd error',e); }
+  }
 
-// FALLBACK: old-style URL params (role/q/level only, no JD)
-if(!Object.keys(config).length){
+  // SECONDARY: cfg64 base64 fallback (old links still work)
+  const cfg64 = urlParams.get('cfg64');
+  if(cfg64){
+    try{
+      config = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(cfg64)))));
+      if(Object.keys(config).length) return;
+    }catch(e){ console.warn('cfg64 parse error',e); }
+  }
+
+  // TERTIARY: old-style URL params
   const urlRole = urlParams.get('role');
-  const urlQ = urlParams.get('q');
-  const urlLevel = urlParams.get('level');
   if(urlRole){
     config = {
-      role: urlRole,
-      jd: '',
-      questions: parseInt(urlQ)||6,
-      level: urlLevel||'mid',
-      focus: 'balanced',
-      camera: true,
-      pasteDetect: true,
-      tabDetect: true,
-      photoInterval: 60
+      role: urlRole, jd: '',
+      questions: parseInt(urlParams.get('q'))||6,
+      level: urlParams.get('level')||'mid',
+      focus: 'balanced', camera: true,
+      pasteDetect: true, tabDetect: true, photoInterval: 60
     };
+    return;
   }
-}
 
-// DEFAULT if nothing in URL
-if(!Object.keys(config).length){
+  // DEFAULT fallback
   config = {
-    role: 'QA Engineer',
-    questions: 6,
-    focus: 'balanced',
-    level: 'mid',
-    camera: true,
-    pasteDetect: true,
-    tabDetect: true,
-    photoInterval: 60,
-    jd: ''
+    role: 'QA Engineer', questions: 6, focus: 'balanced', level: 'mid',
+    camera: true, pasteDetect: true, tabDetect: true, photoInterval: 60, jd: ''
   };
 }
+
+// Block page render until config is loaded
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadConfig();
+  initPage();
+});
+
+function initPage(){
 
 const TOTAL_Q = parseInt(config.questions)||6;
 const ROLE = config.role||'QA Engineer';
@@ -352,7 +375,7 @@ function setStep(n){
   });
 }
 
-function goCamera(){
+async function goCamera(){
   const name=document.getElementById('c-name').value.trim();
   const mobile=document.getElementById('c-mobile').value.trim();
   const email=document.getElementById('c-email').value.trim();
@@ -373,14 +396,59 @@ function goCamera(){
   if(!resumeFile){document.getElementById('resume-err').style.display='block';return;}
   else{document.getElementById('resume-err').style.display='none';}
 
+  // ✅ GPS LOCATION CAPTURE
+  const gpsBtn = document.querySelector('button[onclick="goCamera()"]');
+  if(gpsBtn){ gpsBtn.disabled=true; gpsBtn.textContent='📍 Getting location…'; }
+
+  let gpsData = { status: 'not_requested' };
+  try{
+    const pos = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        timeout: 8000, enableHighAccuracy: true
+      });
+    });
+    const lat = pos.coords.latitude.toFixed(5);
+    const lng = pos.coords.longitude.toFixed(5);
+    const acc = Math.round(pos.coords.accuracy);
+    // Reverse geocode using free API
+    let city = '', region = '', country = '';
+    try{
+      const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+      const gj = await geo.json();
+      city = gj.address?.city || gj.address?.town || gj.address?.village || '';
+      region = gj.address?.state || '';
+      country = gj.address?.country || '';
+    }catch(e){}
+    gpsData = { status:'captured', lat, lng, accuracy:acc, city, region, country,
+      display: city ? `${city}, ${region}` : `${lat}, ${lng}`,
+      capturedAt: new Date().toISOString()
+    };
+    // Check if GPS city matches selected city (loose match)
+    const selectedCity = location.toLowerCase();
+    const gpsCity = (city+' '+region).toLowerCase();
+    const cityWords = selectedCity.split(/[\/\s,]+/).filter(w=>w.length>3);
+    const cityMatch = cityWords.some(w => gpsCity.includes(w));
+    gpsData.locationMatch = cityMatch;
+    gpsData.locationMismatch = location && !cityMatch;
+  }catch(e){
+    gpsData = { status: e.code===1 ? 'denied' : 'failed', error: e.message };
+  }
+
+  if(gpsBtn){ gpsBtn.disabled=false; gpsBtn.textContent='Continue to camera check →'; }
+
   const reader=new FileReader();
   reader.onload=function(){
+    const companyRaw = document.getElementById('c-company').value.trim();
+    const companyVerif = window._companyVerifResult || {status:'not_checked', name: companyRaw};
     cur={
       name,mobile,email,skills,exp,location,
+      company: companyRaw,
+      companyVerification: companyVerif,
       yoe:document.getElementById('c-yoe').value,
       tool:skills,
       resumeName:resumeFile.name,
       resumeSize:Math.round(resumeFile.size/1024)+'KB',
+      gps: gpsData,
       start:new Date().toISOString()
     };
     setStep(2);
@@ -388,7 +456,32 @@ function goCamera(){
   reader.readAsDataURL(resumeFile);
 }
 
-async function startCamera(){
+async function resetForm(){
+  // Clear all form fields so candidate can edit
+  document.getElementById('c-name').value='';
+  document.getElementById('c-mobile').value='';
+  document.getElementById('c-email').value='';
+  document.getElementById('c-skills').value='';
+  document.getElementById('c-exp').value='';
+  document.getElementById('c-location').value='';
+  document.getElementById('c-yoe').selectedIndex=0;
+  document.getElementById('c-resume').value='';
+  document.getElementById('c-company').value='';
+  document.getElementById('email-err').style.display='none';
+  document.getElementById('resume-err').style.display='none';
+  document.getElementById('company-status').textContent='Type to verify...';
+  document.getElementById('company-detail').style.display='none';
+  window._companyVerifResult = null;
+  cur={};
+}
+
+function goBackToDetails(){
+  // Stop camera if running
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  setStep(1);
+}
+
+function startCamera(){
   try{
     stream=await navigator.mediaDevices.getUserMedia({
       video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},
@@ -468,6 +561,25 @@ async function sendAns(){
   setQLabel(qCount+1);
   chat.push({role:'user',content:a});
   resetTypingTracker();
+
+  // ✅ FIX: Force finish after TOTAL_Q answers regardless of Claude response
+  if(qCount >= TOTAL_Q){
+    // Disable input immediately
+    const inp2=document.getElementById('ans');
+    const btn2=document.getElementById('send-btn');
+    inp2.disabled=true;
+    btn2.disabled=true;
+    btn2.innerHTML='<span class="spin"></span> Finishing…';
+    // Get final assessment from Claude then force exit
+    const finalReply = await callClaude(null);
+    if(finalReply.trimStart().startsWith('DONE')){
+      await finish(finalReply);
+    } else {
+      // Force finish even if Claude didn't say DONE
+      await finish('DONE\n{"verdict":"Pending","score":5,"strengths":[],"concerns":[],"jdMatch":50,"summary":"Interview completed. Assessment pending review."}');
+    }
+    return;
+  }
 
   const btn=document.getElementById('send-btn');
   btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
@@ -618,6 +730,239 @@ let introRecorder=null,introChunks=[],introBlob=null,introTimerInterval=null,int
 const MIN_INTRO_SECONDS=120;
 const MAX_INTRO_SECONDS=300;
 
+// ── COMPANY VERIFICATION ENGINE ─────────────────────────────────────────
+
+// Top 100 known Indian IT & global companies (instant match, no API needed)
+const KNOWN_COMPANIES = new Set([
+  'tcs','tata consultancy services','infosys','wipro','hcl','hcl technologies',
+  'tech mahindra','cognizant','accenture','capgemini','ibm','microsoft','google',
+  'amazon','meta','apple','oracle','sap','salesforce','adobe','cisco','dell',
+  'hp','hewlett packard','deloitte','pwc','ey','kpmg','ernst young',
+  'mindtree','mphasis','hexaware','niit technologies','l&t infotech',
+  'larsen toubro','ltimindtree','persistent systems','zensar','cyient',
+  'mastech','igate','patni','syntel','bahwan cybertek','sonata software',
+  'kpit technologies','sasken','geometric','infotech enterprises',
+  'bmc software','ca technologies','emc','vmware','citrix','intuit',
+  'qualcomm','intel','amd','nvidia','broadcom','texas instruments',
+  'flipkart','swiggy','zomato','paytm','phonepe','razorpay','freshworks',
+  'zoho','byju','ola','uber','airbnb','netflix','spotify','twitter','linkedin',
+  'jpmorgan','goldman sachs','morgan stanley','barclays','hsbc','deutsche bank',
+  'standard chartered','citibank','wells fargo','bank of america',
+  'mu sigma','fractal analytics','tiger analytics','latent view','absolutdata',
+  'bosch','siemens','honeywell','ge','3m','johnson controls',
+  'tata motors','mahindra','bajaj','hero','maruti suzuki',
+  'dr reddys','sun pharma','cipla','biocon','divis laboratories',
+  'tanla platforms','mphasis','birlasoft','coforge','happiest minds'
+]);
+
+// Gibberish/fake detection patterns
+function isGibberish(name){
+  const n = name.toLowerCase().replace(/[^a-z]/g,'');
+  if(n.length < 2) return true;
+  // Repeated characters: aaaa, xxxx
+  if(/(.){3,}/.test(n)) return true;
+  // No vowels at all (more than 5 chars)
+  if(n.length > 5 && !/[aeiou]/.test(n)) return true;
+  // Random keyboard patterns
+  if(/^(asdf|qwer|zxcv|1234|abcd|test|fake|dummy|xyz|abc|xxx|yyy|zzz|naa|na|nil|none|null)/.test(n)) return true;
+  return false;
+}
+
+// Check against known companies list
+function checkKnownList(name){
+  const n = name.toLowerCase().trim();
+  // Exact match
+  if(KNOWN_COMPANIES.has(n)) return {found:true, type:'exact'};
+  // Partial match (name contains known company)
+  for(const k of KNOWN_COMPANIES){
+    if(n.includes(k) || k.includes(n)) return {found:true, type:'partial', matched:k};
+  }
+  return {found:false};
+}
+
+// Wikipedia API check
+async function checkWikipedia(name){
+  try{
+    const q = encodeURIComponent(name + ' company');
+    const r = await fetch(`https://en.wikipedia.org/w/api.php?action=search&list=search&srsearch=${q}&srlimit=3&format=json&origin=*`);
+    const d = await r.json();
+    const results = d.query?.search||[];
+    if(!results.length) return {found:false};
+    // Check if top result title closely matches
+    const top = results[0].title.toLowerCase();
+    const nameLower = name.toLowerCase();
+    const words = nameLower.split(/\s+/).filter(w=>w.length>2);
+    const matchScore = words.filter(w=>top.includes(w)).length / Math.max(words.length,1);
+    if(matchScore >= 0.5){
+      return {found:true, title:results[0].title, snippet:results[0].snippet.replace(/<[^>]+>/g,'').substring(0,120)};
+    }
+    return {found:false, closestTitle:results[0].title};
+  }catch(e){ return {found:false, error:e.message}; }
+}
+
+// OpenCorporates API check (free, no key needed for basic search)  
+async function checkOpenCorporates(name){
+  try{
+    const q = encodeURIComponent(name);
+    const r = await fetch(`https://api.opencorporates.com/v0.4/companies/search?q=${q}&jurisdiction_code=in&per_page=3`);
+    if(!r.ok) return {found:false};
+    const d = await r.json();
+    const results = d.results?.companies||[];
+    if(!results.length) return {found:false};
+    const top = results[0].company;
+    return {
+      found:true,
+      name: top.name,
+      jurisdiction: top.jurisdiction_code,
+      status: top.current_status||'Active',
+      number: top.company_number,
+      incorporated: top.incorporation_date
+    };
+  }catch(e){ return {found:false}; }
+}
+
+// REST Countries / domain check via company name
+async function checkClearbit(name){
+  try{
+    // Clearbit Autocomplete — free, no key needed
+    const q = encodeURIComponent(name);
+    const r = await fetch(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${q}`);
+    if(!r.ok) return {found:false};
+    const d = await r.json();
+    if(!d.length) return {found:false};
+    const top = d[0];
+    const nameLower = name.toLowerCase();
+    const topLower = (top.name||"").toLowerCase();
+    // Check name similarity
+    const words = nameLower.split(/\s+/).filter(w=>w.length>2);
+    const matchScore = words.filter(w=>topLower.includes(w)).length / Math.max(words.length,1);
+    if(matchScore >= 0.4 || topLower.includes(nameLower) || nameLower.includes(topLower.split(' ')[0])){
+      return {found:true, name:top.name, domain:top.domain, logo:top.logo};
+    }
+    return {found:false, closest:top.name};
+  }catch(e){ return {found:false}; }
+}
+
+// MAIN VERIFICATION FUNCTION
+let _verifyTimer = null;
+function scheduleCompanyVerify(val){
+  clearTimeout(_verifyTimer);
+  const status = document.getElementById('company-status');
+  const detail = document.getElementById('company-detail');
+  if(!val || val.trim().length < 2){
+    status.textContent = 'Type to verify...';
+    status.style.color = 'var(--muted)';
+    detail.style.display = 'none';
+    window._companyVerifResult = null;
+    return;
+  }
+  status.textContent = '⏳ Verifying...';
+  status.style.color = 'var(--muted)';
+  _verifyTimer = setTimeout(()=>verifyCompany(val.trim()), 900);
+}
+
+async function verifyCompany(name){
+  const status = document.getElementById('company-status');
+  const detail = document.getElementById('company-detail');
+
+  // Step 1: Gibberish check
+  if(isGibberish(name)){
+    const result = {status:'fake', name, reason:'Appears to be a fake or gibberish entry', score:0};
+    window._companyVerifResult = result;
+    status.textContent = '❌ Suspicious entry';
+    status.style.color = 'var(--red,#dc2626)';
+    detail.style.display = 'block';
+    detail.style.background = '#fef2f2';
+    detail.style.border = '1px solid #fca5a5';
+    detail.style.color = '#dc2626';
+    detail.textContent = '⚠️ This looks like a fake entry. Please enter your actual current employer.';
+    return;
+  }
+
+  // Step 2: Known companies list (instant)
+  const known = checkKnownList(name);
+  if(known.found){
+    const result = {status:'verified', name, source:'known_list', score:10,
+      detail: known.type==='exact' ? 'Well-known company — verified' : `Matches known company`};
+    window._companyVerifResult = result;
+    status.textContent = '✅ Verified';
+    status.style.color = 'var(--green,#16a34a)';
+    detail.style.display = 'block';
+    detail.style.background = '#f0fdf4';
+    detail.style.border = '1px solid #86efac';
+    detail.style.color = '#15803d';
+    detail.textContent = `✓ ${name} — recognised company`;
+    return;
+  }
+
+  status.textContent = '🔍 Checking databases...';
+
+  // Step 3: Run all 3 API checks in parallel
+  const [wiki, opencorp, clearbit] = await Promise.all([
+    checkWikipedia(name),
+    checkOpenCorporates(name),
+    checkClearbit(name)
+  ]);
+
+  let score = 0;
+  let sources = [];
+  let displayName = name;
+  let extraInfo = '';
+
+  if(clearbit.found){ score += 4; sources.push('Clearbit'); displayName = clearbit.name; if(clearbit.domain) extraInfo += ` · ${clearbit.domain}`; }
+  if(wiki.found){ score += 3; sources.push('Wikipedia'); if(wiki.title) displayName = wiki.title; }
+  if(opencorp.found){ score += 3; sources.push('OpenCorporates'); if(opencorp.status) extraInfo += ` · ${opencorp.status}`; }
+
+  const result = {status: score>=4?'verified':score>=2?'partial':'not_found',
+    name, displayName, score, sources, extraInfo,
+    wiki, opencorp, clearbit};
+  window._companyVerifResult = result;
+
+  if(score >= 4){
+    status.textContent = `✅ Verified (${sources.join('+')})`;
+    status.style.color = 'var(--green,#16a34a)';
+    detail.style.display = 'block';
+    detail.style.background = '#f0fdf4';
+    detail.style.border = '1px solid #86efac';
+    detail.style.color = '#15803d';
+    detail.textContent = `✓ ${displayName}${extraInfo} — found in ${sources.join(', ')}`;
+  } else if(score >= 2){
+    status.textContent = '⚠️ Partially verified';
+    status.style.color = '#d97706';
+    detail.style.display = 'block';
+    detail.style.background = '#fffbeb';
+    detail.style.border = '1px solid #fcd34d';
+    detail.style.color = '#92400e';
+    detail.textContent = `⚠ ${displayName} — limited records found. Will be flagged for manual verification.`;
+  } else {
+    status.textContent = '❓ Not found';
+    status.style.color = '#6b7394';
+    detail.style.display = 'block';
+    detail.style.background = '#f8f9fc';
+    detail.style.border = '1px solid #e2e6f0';
+    detail.style.color = '#6b7394';
+    detail.textContent = `"${name}" not found in company databases. Could be a small company or startup — will be flagged.`;
+  }
+}
+
+function goBackToCamera(){
+  // Stop any recording in progress
+  if(introRecorder && introRecorder.state === 'recording'){
+    introRecorder.stop();
+    clearInterval(introTimerInterval);
+  }
+  introBlob=null; introSeconds=0;
+  setStep(2);
+  // Re-show camera
+  if(stream){
+    document.getElementById('cam-video').srcObject=stream;
+    document.getElementById('cam-overlay').style.display='none';
+    document.getElementById('cam-status').style.display='block';
+    document.getElementById('cam-btn').style.display='none';
+    document.getElementById('cam-ready').style.display='block';
+  }
+}
+
 function startIntroRecording(){
   if(!stream){alert('Camera not available. Please go back and enable camera.');return;}
   introChunks=[];introSeconds=0;
@@ -731,6 +1076,7 @@ async function proceedToInterview(){
     think.textContent='Error starting interview: '+e.message;
   }
 }
+} // end initPage
 </script>
 </body>
 </html>

@@ -249,7 +249,7 @@ function saveJD(){
   goStep(2);
 }
 
-function generateLink(){
+async function generateLink(){
   const jd = JSON.parse(localStorage.getItem('active_jd')||'{}');
 
   const config = {
@@ -274,21 +274,37 @@ function generateLink(){
   configs.unshift(config);
   localStorage.setItem('interview_configs', JSON.stringify(configs.slice(0,50)));
 
-  // ✅ KEY FIX: Encode FULL config into URL so ANY device can read it
-  // This means candidates on their own phones/laptops get the full JD
-  const payload = btoa(unescape(encodeURIComponent(JSON.stringify({
-    role: config.role,
-    jd: config.jd,
-    questions: config.questions,
-    focus: config.focus,
-    level: config.level,
-    camera: config.camera,
-    pasteDetect: config.pasteDetect,
-    tabDetect: config.tabDetect,
-    photoInterval: config.photoInterval
-  }))));
+  // ✅ SHORT LINK via Upstash Redis — clean short URL for any device
+  const genBtn = document.querySelector('button[onclick="generateLink()"]');
+  if(genBtn){ genBtn.disabled=true; genBtn.textContent='⏳ Generating link...'; }
 
-  const url = `${SITE_URL}/interview.html?cfg64=${encodeURIComponent(payload)}`;
+  let url;
+  try{
+    const saveRes = await fetch('/api/save-jd', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(config)
+    });
+    const data = await saveRes.json();
+    if(data.id){
+      config.shortId = data.id;
+      // Update saved config with shortId
+      configs[0].shortId = data.id;
+      localStorage.setItem('interview_configs', JSON.stringify(configs.slice(0,50)));
+      url = `${SITE_URL}/interview.html?id=${data.id}`;
+    } else { throw new Error('No ID returned'); }
+  }catch(e){
+    console.warn('save-jd failed, using cfg64 fallback:', e);
+    const payload = btoa(unescape(encodeURIComponent(JSON.stringify({
+      role:config.role, jd:config.jd, questions:config.questions,
+      focus:config.focus, level:config.level, camera:config.camera,
+      pasteDetect:config.pasteDetect, tabDetect:config.tabDetect,
+      photoInterval:config.photoInterval
+    }))));
+    url = `${SITE_URL}/interview.html?cfg64=${encodeURIComponent(payload)}`;
+  }
+
+  if(genBtn){ genBtn.disabled=false; genBtn.textContent='Generate Interview Link →'; }
 
   document.getElementById('link-url').textContent = url;
   document.getElementById('test-link').href = url;
@@ -348,11 +364,16 @@ function renderSaved(){
     const d = new Date(c.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
     const candidates = JSON.parse(localStorage.getItem('tangoe_candidates')||'[]').filter(x=>x.configId==c.id).length;
     // Re-generate URL with cfg64 for saved links
-    const payload = btoa(unescape(encodeURIComponent(JSON.stringify({
-      role:c.role,jd:c.jd,questions:c.questions,focus:c.focus,level:c.level,
-      camera:c.camera,pasteDetect:c.pasteDetect,tabDetect:c.tabDetect,photoInterval:c.photoInterval
-    }))));
-    const url = `${SITE_URL}/interview.html?cfg64=${encodeURIComponent(payload)}`;
+    let url;
+    if(c.shortId){
+      url = `${SITE_URL}/interview.html?id=${c.shortId}`;
+    } else {
+      const payload = btoa(unescape(encodeURIComponent(JSON.stringify({
+        role:c.role,jd:c.jd,questions:c.questions,focus:c.focus,level:c.level,
+        camera:c.camera,pasteDetect:c.pasteDetect,tabDetect:c.tabDetect,photoInterval:c.photoInterval
+      }))));
+      url = `${SITE_URL}/interview.html?cfg64=${encodeURIComponent(payload)}`;
+    }
     return `<div class="jd-row">
       <div>
         <div class="jd-name">${c.role} <span class="tag">${c.level}</span></div>
