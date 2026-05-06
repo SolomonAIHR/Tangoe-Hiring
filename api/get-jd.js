@@ -5,8 +5,11 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const KV_URL = process.env.KV_REST_API_URL;
-  const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+  const KV_URL = process.env.KV_REST_API_URL
+    || process.env.UPSTASH_REDIS_REST_URL
+    || 'https://promoted-wolf-89659.upstash.io';
+  const KV_TOKEN = process.env.KV_REST_API_TOKEN
+    || process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!KV_URL || !KV_TOKEN) return res.status(500).json({ error: 'KV not configured' });
 
   const { id } = req.query;
