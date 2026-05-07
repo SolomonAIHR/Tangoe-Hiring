@@ -297,17 +297,31 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-blue" onclick="submitFinal()" id="submit-final-btn">✅ Submit Interview →</button>
-        <button class="btn" style="background:var(--bg);border:1px solid var(--border);color:var(--muted)" onclick="goBackToInterview()">← Edit answers</button>
       </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">Once submitted you cannot go back or change your answers.</div>
     </div>
   </div>
 
   <!-- STEP 5: Done -->
   <div id="s5" style="display:none">
-    <div class="done-wrap">
-      <div class="done-icon">✓</div>
-      <h2>Interview complete!</h2>
-      <p>Your responses have been submitted to the Tangoe hiring team. You'll hear back within 2–3 business days at <strong id="done-email"></strong>.</p>
+    <div class="done-wrap" style="text-align:center;padding:40px 20px;max-width:520px;margin:0 auto">
+      <div class="done-icon" style="font-size:52px;margin-bottom:16px">✓</div>
+      <h2 style="font-size:24px;font-weight:700;margin-bottom:12px">Interview Complete!</h2>
+      <p style="font-size:15px;color:var(--muted);line-height:1.8;margin-bottom:24px">
+        Thank you for completing your interview with <strong>Tangoe</strong>.<br/>
+        Your responses have been submitted to our hiring team.<br/><br/>
+        We will review your submission and get back to you within <strong>2–3 business days</strong> at<br/>
+        <strong id="done-email" style="color:var(--accent)"></strong>.
+      </p>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:24px">
+        📋 <strong style="color:var(--ink)">What happens next?</strong><br/>
+        Our recruiters will review your interview responses, video introduction, and assessment.<br/>
+        Shortlisted candidates will be contacted for the next round.
+      </div>
+      <div style="font-size:12px;color:var(--muted);padding-top:16px;border-top:1px solid var(--border)">
+        You may now close this window.<br/>
+        <span style="font-size:11px;color:#9ca3af">Tangoe AI Hiring System · Submission confirmed</span>
+      </div>
     </div>
   </div>
 
@@ -1037,6 +1051,15 @@ async function finish(reply){
   document.getElementById('done-email').textContent=cur.email;
   setStep(5);
   window.scrollTo({top:0, behavior:'smooth'});
+  // Hide nav and steps on done page — interview is over
+  const nav=document.querySelector('.nav');
+  const steps=document.querySelector('.steps');
+  if(nav) nav.style.display='none';
+  if(steps) steps.style.display='none';
+  // Stop face detection
+  stopFaceDetection();
+  // Exit fullscreen
+  try{ if(document.exitFullscreen) document.exitFullscreen(); }catch(e){}
 }
 
 // ── CAMERA / PHOTO CAPTURE ────────────────────────────────────────────────
@@ -1154,9 +1177,20 @@ function showReviewStep(reply){
 }
 
 async function submitFinal(){
+  // Disable submit button immediately
   const btn=document.getElementById('submit-final-btn');
   btn.disabled=true;
   btn.innerHTML='<span class="spin"></span> Submitting…';
+
+  // Disable ALL edit buttons so candidate can't change anything
+  document.querySelectorAll('#review-list button').forEach(b=>b.disabled=true);
+
+  // Push history state so browser back button doesn't go back to interview
+  history.pushState(null, '', window.location.href);
+  window.addEventListener('popstate', ()=>{
+    history.pushState(null, '', window.location.href);
+  });
+
   await finish(_pendingFinishReply);
 }
 
@@ -1184,14 +1218,8 @@ function cancelEdit(i){
 }
 
 function goBackToInterview(){
-  document.getElementById('s4r').style.display='none';
-  document.getElementById('s4').style.display='block';
-  // Re-enable input
-  const inp=document.getElementById('ans');
-  const btn=document.getElementById('send-btn');
-  if(inp){ inp.disabled=false; inp.value=''; }
-  if(btn){ btn.disabled=false; btn.textContent='Send →'; }
-  _pendingFinishReply='';
+  // Disabled — candidates cannot go back after review step
+  console.log('Back navigation disabled after review step');
 }
 function setQLabel(n){document.getElementById('q-label').textContent=n>TOTAL_Q?'Wrapping up…':`Question ${Math.min(n,TOTAL_Q)} of ${TOTAL_Q}`;}
 function updateDots(n){document.querySelectorAll('.q-dot').forEach((d,i)=>d.classList.toggle('done',i<n));}
