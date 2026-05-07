@@ -319,8 +319,7 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
         Shortlisted candidates will be contacted for the next round.
       </div>
       <div style="font-size:12px;color:var(--muted);padding-top:16px;border-top:1px solid var(--border)">
-        You may now close this window.<br/>
-        <span style="font-size:11px;color:#9ca3af">Tangoe AI Hiring System · Submission confirmed</span>
+        <span style="font-size:11px;color:#9ca3af">Tangoe AI Hiring System · Submission confirmed ✓</span>
       </div>
     </div>
   </div>
@@ -882,25 +881,38 @@ function startInterview(){
 
 function buildSystem(cheatCtx){
   const cheatNote=cheatCtx?`\nANTI-CHEAT SIGNAL: ${cheatCtx}. Ask a razor-specific follow-up requiring lived memory.`:'';
-  return `You are conducting an initial recruiter screening interview for a ${ROLE} position at Tangoe.
+  const jdContent = JD || config.jd || '';
+  const roleTitle = ROLE || config.role || 'Professional';
 
-JOB DESCRIPTION:
-${JD||`${ROLE} role at Tangoe — technology expense management SaaS company. Assess technical skills, problem solving, and communication.`}
+  return `You are conducting a structured recruiter screening interview for a ${roleTitle} position at Tangoe.
 
-Your goal: assess if candidate meets JD requirements through natural conversation.
+${jdContent ? `FULL JOB DESCRIPTION (read carefully — your questions MUST be based on these specific requirements):
+---
+${jdContent}
+---` : `ROLE: ${roleTitle} at Tangoe — technology expense management SaaS company.`}
 
-Rules:
-1. Ask ONE question at a time — never multiple
-2. Base questions directly on JD requirements
-3. Probe for: specific tools used, real project examples, actual metrics/outcomes
-4. If answer is vague: ask for a specific example from recent work
-5. Vary across: technical skills, process knowledge, past impact, problem solving
-6. After exactly ${TOTAL_Q} candidate answers, output ONLY:
+CANDIDATE INFO:
+- Name: ${cur.name||'Candidate'}
+- Experience: ${cur.yoe||'Not specified'}
+- Skills listed: ${cur.skills||'Not specified'}
+- IT Experience: ${cur.exp||'Not specified'}
+- Location: ${cur.location||'Not specified'}
+
+YOUR GOAL: Assess if this candidate genuinely meets the JD requirements above.
+
+STRICT RULES:
+1. Ask ONE question at a time — never multiple questions together
+2. EVERY question must reference a specific requirement from the JD above
+3. Do NOT ask generic questions — ask about the EXACT skills, tools, technologies mentioned in the JD
+4. Probe for: specific tools used, real project examples, actual metrics/outcomes
+5. If answer is vague or too short: ask for a concrete example from recent work
+6. Cover different JD areas: technical skills, past projects, specific tools, problem solving
+7. After exactly ${TOTAL_Q} candidate answers, output ONLY:
 Line 1: DONE
 Line 2: valid JSON (no markdown):
-{"verdict":"Strong Yes","score":8,"strengths":["X","Y"],"concerns":["Z"],"jdMatch":85,"summary":"2 sentence summary against JD."}
+{"verdict":"Strong Yes","score":8,"strengths":["X","Y"],"concerns":["Z"],"jdMatch":85,"summary":"2 sentence summary comparing candidate to JD requirements."}
 ${cheatNote}
-Verdict options: Strong Yes(9-10)/Yes(7-8)/Maybe(5-6)/No(1-4). Be conversational but precise.`;
+Verdict: Strong Yes(9-10)/Yes(7-8)/Maybe(5-6)/No(1-4). Be conversational, professional, precise.`;
 }
 
 async function sendAns(){
@@ -1012,8 +1024,13 @@ async function finish(reply){
   assessment.photoCount=photos.length;
 
   const result={
-    candidate:cur,assessment,
-    transcript:tx,photos,
+    candidate:cur,
+    assessment,
+    transcript:tx,
+    photos,
+    role: ROLE || config.role || 'Unknown',
+    jd: JD || config.jd || '',
+    linkId: urlParams.get('id') || '',
     completedAt:new Date().toISOString()
   };
 
@@ -1041,25 +1058,70 @@ async function finish(reply){
 
   // ✅ Save to Upstash Redis (visible on any device/browser)
   try{
-    await fetch('/api/save-result',{
+    const saveRes = await fetch('/api/save-result',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({...result, id:Date.now()})
     });
+    const saveData = await saveRes.json();
+    if(!saveRes.ok || !saveData.ok){
+      console.error('save-result error:', saveData);
+      // Retry once with minimal data
+      const minResult = {
+        ...result,
+        photos: [],
+        transcript: (result.transcript||[]).map(t=>({q:t.q,a:t.a?.substring(0,300)||'',flags:t.flags||[]}))
+      };
+      await fetch('/api/save-result',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({...minResult, id:Date.now()})
+      });
+    }
   }catch(e){ console.warn('save-result failed:',e); }
 
-  document.getElementById('done-email').textContent=cur.email;
-  setStep(5);
-  window.scrollTo({top:0, behavior:'smooth'});
-  // Hide nav and steps on done page — interview is over
-  const nav=document.querySelector('.nav');
-  const steps=document.querySelector('.steps');
-  if(nav) nav.style.display='none';
-  if(steps) steps.style.display='none';
-  // Stop face detection
+  // Stop proctoring
   stopFaceDetection();
-  // Exit fullscreen
+  stopPhotoCapture();
   try{ if(document.exitFullscreen) document.exitFullscreen(); }catch(e){}
+
+  // Replace entire page with full-screen thank you — no way back
+  document.body.innerHTML = `
+    <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f0f4ff;font-family:'DM Sans',Arial,sans-serif;padding:24px">
+      <div style="text-align:center;max-width:520px;width:100%">
+        <div style="width:72px;height:72px;background:#22c97a;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:32px;color:#fff">✓</div>
+        <div style="font-size:28px;font-weight:800;color:#0f1117;margin-bottom:8px;font-family:'Syne',Arial,sans-serif">Interview Complete!</div>
+        <div style="font-size:14px;color:#6b7280;margin-bottom:28px">Submission confirmed · ${new Date().toLocaleString('en-IN')}</div>
+        <div style="background:#fff;border:1px solid #e2e6f0;border-radius:14px;padding:24px;margin-bottom:20px;text-align:left">
+          <div style="font-size:15px;color:#0f1117;line-height:1.8;margin-bottom:16px">
+            Thank you for completing your interview with <strong>Tangoe</strong>.<br/>
+            Your responses, video introduction and assessment have been submitted to our hiring team.
+          </div>
+          <div style="font-size:13px;color:#6b7280;background:#f8f9fc;border-radius:8px;padding:12px 16px;line-height:1.8">
+            📧 We will get back to you within <strong style="color:#0f1117">2–3 business days</strong> at<br/>
+            <strong style="color:#0057ff">${cur.email}</strong>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #e2e6f0;border-radius:14px;padding:20px;margin-bottom:24px;text-align:left">
+          <div style="font-size:13px;font-weight:600;color:#0f1117;margin-bottom:10px">📋 What happens next?</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#6b7280">
+              <div style="width:22px;height:22px;border-radius:50%;background:#0057ff;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">1</div>
+              Our recruiters will review your interview & video introduction
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#6b7280">
+              <div style="width:22px;height:22px;border-radius:50%;background:#0057ff;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">2</div>
+              Shortlisted candidates will be contacted for the next round
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#6b7280">
+              <div style="width:22px;height:22px;border-radius:50%;background:#0057ff;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">3</div>
+              Check your email inbox for updates from Tangoe HR
+            </div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#9ca3af">Tangoe AI Hiring System · All rights reserved</div>
+      </div>
+    </div>`;
 }
 
 // ── CAMERA / PHOTO CAPTURE ────────────────────────────────────────────────
@@ -1620,7 +1682,8 @@ async function proceedToInterview(){
   think.innerHTML='<span class="spin" style="border-top-color:#999"></span> Starting interview...';
   chatArea.appendChild(think);
 
-  const initMsg=`Candidate: ${cur.name} | Role: ${ROLE} | Exp: ${cur.yoe||''} | IT exp: ${cur.exp||''} | Skills: ${cur.skills||''} | Location: ${cur.location||''}`;
+  const jdSnippet = (JD||config.jd||'').substring(0, 300);
+  const initMsg=`START INTERVIEW. Candidate: ${cur.name} | Role: ${ROLE} | Experience: ${cur.yoe||''} | IT Experience: ${cur.exp||''} | Skills claimed: ${cur.skills||''} | Location: ${cur.location||''}${jdSnippet?` | JD context: ${jdSnippet}...`:''}. Ask your first JD-specific screening question now.`;
   chat.push({role:'user',content:initMsg});
 
   try{

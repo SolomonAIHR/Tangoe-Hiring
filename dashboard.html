@@ -705,7 +705,7 @@ let filteredCandidates = [];
 function populatePositionDropdown(){
   const sel = document.getElementById('position-filter');
   if(!sel) return;
-  const roles = [...new Set(candidates.map(c => c.candidate?.role || c.role || 'Unknown'))].sort();
+  const roles = [...new Set(candidates.map(c => c.role || c.candidate?.role || 'Unknown').filter(r=>r && r!=='Unknown'))].sort();
   const current = sel.value;
   sel.innerHTML = '<option value="">All positions</option>';
   roles.forEach(r => {
@@ -729,8 +729,9 @@ function applyFilters(){
     const role = (c.role || cand.role || '').toLowerCase();
 
     const matchSearch = !search || name.includes(search) || email.includes(search);
-    const matchPosition = !position || role === position.toLowerCase() ||
-      (c.role||'').toLowerCase() === position.toLowerCase();
+    const matchPosition = !position || 
+      (c.role||'').toLowerCase() === position.toLowerCase() ||
+      (c.candidate?.role||'').toLowerCase() === position.toLowerCase();
     const matchVerdict = !verdict || (a.verdict||'') === verdict;
 
     return matchSearch && matchPosition && matchVerdict;
