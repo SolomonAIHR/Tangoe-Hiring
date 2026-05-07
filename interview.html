@@ -462,9 +462,12 @@ let TOTAL_Q = 6, ROLE = 'QA Engineer', JD = '', PHOTO_INTERVAL = 60000;
   ROLE = getROLE();
   JD = getJD();
   PHOTO_INTERVAL = getPHOTO_INTERVAL();
-  document.getElementById('s1-title').textContent = ROLE+' · Tangoe';
-  const il=document.getElementById('int-label');
-  if(il) il.textContent = ROLE+' Interview · Tangoe';
+  // Update all title elements after config is loaded
+  const titleEls = document.querySelectorAll('#s1-title, #int-label, [data-role-title]');
+  document.querySelectorAll('#s1-title').forEach(el => el.textContent = ROLE+' · Tangoe');
+  document.querySelectorAll('#int-label').forEach(el => el.textContent = ROLE+' Interview · Tangoe');
+  // Update browser tab title
+  document.title = ROLE + ' · Tangoe Interview';
 
   // ✅ Check device eligibility on page load (before any form shown)
   const shortId = urlParams.get('id');
@@ -483,9 +486,7 @@ let stream=null, photoTimer=null, photos=[];
 let typingLog=[], answerStartTime=0, lastKeyTime=0, pasteDetected=false, totalKeystrokes=0;
 let tabSwitchCount=0;
 
-// Update UI with role
-document.getElementById('s1-title').textContent = ROLE + ' · Tangoe';
-document.getElementById('int-label').textContent = ROLE + ' Interview · Tangoe';
+// Titles updated after config loads (see async loadConfig block below)
 
 // Tab switch detection
 document.addEventListener('visibilitychange',()=>{
