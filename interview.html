@@ -147,19 +147,34 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
           </select>
         </div>
         <div class="fl"><label>Current location</label>
-          <select id="c-location">
-            <option value="">Select city</option>
-            <option>Bangalore</option><option>Mumbai</option><option>Delhi / NCR</option>
-            <option>Hyderabad</option><option>Chennai</option><option>Pune</option>
-            <option>Kolkata</option><option>Ahmedabad</option><option>Noida</option>
-            <option>Gurgaon</option><option>Mysore</option><option>Coimbatore</option>
-            <option>Kochi</option><option>Indore</option><option>Bhubaneswar</option>
-            <option>Jaipur</option><option>Chandigarh</option><option>Nagpur</option>
-            <option>Thiruvananthapuram</option><option>Lucknow</option>
-            <option>Vizag / Visakhapatnam</option><option>Vadodara</option>
-            <option>Surat</option><option>Mangalore</option><option>Hubli</option>
-            <option>Other</option>
-          </select>
+          <div style="display:flex;gap:8px">
+            <select id="c-country" onchange="updateCities()" style="width:42%;min-width:110px">
+              <option value="India" selected>🇮🇳 India</option>
+              <option value="USA">🇺🇸 USA</option>
+              <option value="UK">🇬🇧 UK</option>
+              <option value="UAE">🇦🇪 UAE</option>
+              <option value="Singapore">🇸🇬 Singapore</option>
+              <option value="Australia">🇦🇺 Australia</option>
+              <option value="Canada">🇨🇦 Canada</option>
+              <option value="Germany">🇩🇪 Germany</option>
+              <option value="Netherlands">🇳🇱 Netherlands</option>
+              <option value="Malaysia">🇲🇾 Malaysia</option>
+              <option value="Other">🌍 Other</option>
+            </select>
+            <select id="c-location" style="flex:1">
+              <option value="">Select city</option>
+              <option>Bangalore</option><option>Mumbai</option><option>Delhi / NCR</option>
+              <option>Hyderabad</option><option>Chennai</option><option>Pune</option>
+              <option>Kolkata</option><option>Ahmedabad</option><option>Noida</option>
+              <option>Gurgaon</option><option>Mysore</option><option>Coimbatore</option>
+              <option>Kochi</option><option>Indore</option><option>Bhubaneswar</option>
+              <option>Jaipur</option><option>Chandigarh</option><option>Nagpur</option>
+              <option>Thiruvananthapuram</option><option>Lucknow</option>
+              <option>Vizag / Visakhapatnam</option><option>Vadodara</option>
+              <option>Surat</option><option>Mangalore</option><option>Hubli</option>
+              <option>Other</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -478,7 +493,8 @@ let TOTAL_Q = 6, ROLE = 'QA Engineer', JD = '', PHOTO_INTERVAL = 60000;
     const t1 = document.getElementById('s1-title');
     const t2 = document.getElementById('int-label');
     const roleText = ROLE && ROLE !== 'Screening Interview' ? ROLE : config.role || ROLE;
-    if(t1) t1.textContent = roleText + ' · Tangoe';
+    const reqText = config.req ? ` [${config.req}]` : '';
+    if(t1) t1.textContent = roleText + reqText + ' · Tangoe';
     if(t2) t2.textContent = roleText + ' Interview · Tangoe';
     document.title = roleText + ' · Tangoe Interview';
     console.log('Titles updated to:', roleText, '| config.role:', config.role);
@@ -548,9 +564,45 @@ function startCameraMonitor(){
     if(!stream) return;
     const videoTrack = stream.getVideoTracks()[0];
     if(!videoTrack) return;
+
+    // Check if track ended
     if(videoTrack.readyState === 'ended' || videoTrack.muted){
       tabSwitchCount++;
       showCameraWarning('⚠️ <strong>Camera is off</strong> — Please turn your camera back on to continue. This has been flagged in your report.');
+      return;
+    }
+
+    // ✅ BLACK FRAME DETECTION for video intro step
+    // Check current step — run during both intro (step 3) and interview (step 4)
+    const introPreview = document.getElementById('intro-preview');
+    const camVideo2 = document.getElementById('cam-video2');
+    const activeVideo = introPreview?.srcObject ? introPreview : (camVideo2?.srcObject ? camVideo2 : null);
+
+    if(activeVideo){
+      try{
+        const canvas = document.createElement('canvas');
+        canvas.width = 64; canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(activeVideo, 0, 0, 64, 64);
+        const pixels = ctx.getImageData(0, 0, 64, 64).data;
+        let totalBrightness = 0;
+        for(let i = 0; i < pixels.length; i += 4){
+          totalBrightness += (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
+        }
+        const avgBrightness = totalBrightness / (pixels.length / 4);
+
+        if(avgBrightness < 15){
+          tabSwitchCount++;
+          // Show warning on appropriate element
+          const introWarn = document.getElementById('intro-cam-warning');
+          if(introWarn && introWarn.closest('#s3')?.style.display !== 'none'){
+            introWarn.style.display = 'block';
+            introWarn.innerHTML = '🚨 <strong>Camera appears blocked or shutter is closed!</strong> Please uncover your camera to continue. This has been flagged.';
+          } else {
+            showCameraWarning('🚨 <strong>Camera is blocked/covered</strong> — Please uncover your camera immediately. Flagged in report.');
+          }
+        }
+      }catch(e){}
     }
   }, 2000);
 }
@@ -886,6 +938,7 @@ async function resetForm(){
   document.getElementById('c-skills').value='';
   document.getElementById('c-exp').value='';
   document.getElementById('c-location').value='';
+  if(document.getElementById('c-country')) document.getElementById('c-country').value='India';
   document.getElementById('c-yoe').selectedIndex=0;
   document.getElementById('c-resume').value='';
   document.getElementById('c-company').value='';
@@ -1090,6 +1143,7 @@ async function finish(reply){
     transcript:tx,
     photos,
     role: ROLE || config.role || 'Unknown',
+    req: config.req || '',
     jd: JD || config.jd || '',
     linkId: urlParams.get('id') || '',
     completedAt:new Date().toISOString()
@@ -1396,28 +1450,181 @@ const MAX_INTRO_SECONDS=300;
 
 // ── COMPANY VERIFICATION ENGINE ─────────────────────────────────────────
 
-// Top 100 known Indian IT & global companies (instant match, no API needed)
+// Comprehensive Indian + Global company list
 const KNOWN_COMPANIES = new Set([
+  // ── INDIAN IT COMPANIES ──────────────────────────────────────────
   'tcs','tata consultancy services','infosys','wipro','hcl','hcl technologies',
-  'tech mahindra','cognizant','accenture','capgemini','ibm','microsoft','google',
-  'amazon','meta','apple','oracle','sap','salesforce','adobe','cisco','dell',
-  'hp','hewlett packard','deloitte','pwc','ey','kpmg','ernst young',
-  'mindtree','mphasis','hexaware','niit technologies','l&t infotech',
-  'larsen toubro','ltimindtree','persistent systems','zensar','cyient',
-  'mastech','igate','patni','syntel','bahwan cybertek','sonata software',
-  'kpit technologies','sasken','geometric','infotech enterprises',
-  'bmc software','ca technologies','emc','vmware','citrix','intuit',
-  'qualcomm','intel','amd','nvidia','broadcom','texas instruments',
-  'flipkart','swiggy','zomato','paytm','phonepe','razorpay','freshworks',
-  'zoho','byju','ola','uber','airbnb','netflix','spotify','twitter','linkedin',
-  'jpmorgan','goldman sachs','morgan stanley','barclays','hsbc','deutsche bank',
-  'standard chartered','citibank','wells fargo','bank of america',
-  'mu sigma','fractal analytics','tiger analytics','latent view','absolutdata',
-  'bosch','siemens','honeywell','ge','3m','johnson controls',
-  'tata motors','mahindra','bajaj','hero','maruti suzuki',
-  'dr reddys','sun pharma','cipla','biocon','divis laboratories',
-  'tanla platforms','mphasis','birlasoft','coforge','happiest minds'
+  'tech mahindra','cognizant','accenture india','capgemini india','ibm india',
+  'mindtree','mphasis','hexaware','hexaware technologies','niit technologies',
+  'niit','l&t infotech','larsen toubro infotech','ltimindtree','lti',
+  'persistent systems','zensar','zensar technologies','cyient','mastech',
+  'igate','patni','syntel','bahwan cybertek','sonata software',
+  'kpit','kpit technologies','sasken','geometric','infotech enterprises',
+  'birlasoft','coforge','happiest minds','happiest minds technologies',
+  'ramco systems','nucleus software','tata elxsi','tata technologies',
+  'kellton tech','saksoft','intellect design','intellect design arena',
+  'newgen software','newgen','quick heal','quick heal technologies',
+  'rategain','rategain travel technologies','tanla platforms','tanla',
+  '3i infotech','mastech digital','kalpataru','subex','route mobile',
+  'eclerx','eclerx services','firstsource','firstsource solutions',
+  'mflex','r systems','r systems international','majesco','majesco software',
+  'oracle financial services','oracle fsi','ofss',
+  'tata digital','tata play','tata communications',
+
+  // ── INDIAN BANKING & FINANCE ─────────────────────────────────────
+  'hdfc bank','hdfc','icici bank','icici','axis bank','sbi',
+  'state bank of india','kotak mahindra bank','kotak','yes bank',
+  'indusind bank','bank of baroda','bank of india','canara bank',
+  'union bank','union bank of india','punjab national bank','pnb',
+  'federal bank','idfc first bank','idfc','rbl bank',
+  'bajaj finance','bajaj finserv','shriram finance','muthoot finance',
+  'manappuram finance','l&t finance','mahindra finance','cholamandalam',
+  'hdfc life','icici prudential','sbi life','max life','lic',
+  'nse','bse','cams','karvy','cdsl','ndsl',
+  'paytm','phonepe','razorpay','billdesk','mswipe','pine labs',
+  'zerodha','upstox','groww','angel broking','angel one','5paisa',
+
+  // ── INDIAN TELECOM ────────────────────────────────────────────────
+  'reliance jio','jio','airtel','bharti airtel','vodafone idea','vi',
+  'bsnl','mtnl','tata teleservices','sterlite technologies',
+
+  // ── INDIAN ECOMMERCE & STARTUPS ───────────────────────────────────
+  'flipkart','myntra','meesho','nykaa','mamaearth','boat','noise',
+  'swiggy','zomato','dunzo','blinkit','zepto','bigbasket',
+  'ola','rapido','uber india','yulu','bounce',
+  'byju','unacademy','vedantu','upgrad','simplilearn','great learning',
+  'cred','slice','jupiter','fi money','niyo','open',
+  'lenskart','pepperfry','urban ladder','livspace','homelane',
+  'practo','healthkart','pharmeasy','1mg','netmeds','apollo pharmacy',
+  'policybazaar','coverfox','acko','digit insurance',
+  'oyo','mmt','makemytrip','goibibo','ixigo','yatra','cleartrip',
+  'freshworks','zoho','chargebee','postman','browserstack','hasura',
+  'druva','icertis','pubmatic','inmobi','glance','dailyhunt',
+
+  // ── INDIAN PHARMA ─────────────────────────────────────────────────
+  'sun pharma','sun pharmaceutical','dr reddys','dr reddy',
+  'cipla','biocon','divis laboratories','divi','lupin','aurobindo',
+  'torrent pharma','torrent pharmaceuticals','cadila','zydus',
+  'ipca laboratories','glenmark','alembic','pfizer india',
+  'abbott india','astrazeneca india','novartis india',
+
+  // ── INDIAN MANUFACTURING & INFRA ──────────────────────────────────
+  'tata steel','tata motors','tata group','tata','mahindra',
+  'mahindra & mahindra','bajaj auto','bajaj','hero motocorp','hero',
+  'maruti suzuki','maruti','hyundai india','kia india','honda india',
+  'ashok leyland','eicher motors','force motors','tvs motor','tvs',
+  'ultratech cement','ambuja cement','acc cement','shree cement',
+  'jsw steel','jsw','sail','hindalco','vedanta','nalco',
+  'l&t','larsen & toubro','larsen and toubro','bhel','ntpc','ongc',
+  'ioc','indian oil','bpcl','hpcl','reliance industries','reliance',
+  'adani group','adani','ambani','godrej','godrej group',
+  'aditya birla','aditya birla group','ultratech',
+
+  // ── INDIAN MEDIA & ENTERTAINMENT ──────────────────────────────────
+  'zee entertainment','zee','sony india','star india','disney india',
+  'times of india','times group','hindustan times','hcl media',
+  'sun tv','sun group','ndtv','republic','india today',
+
+  // ── GLOBAL TECH GIANTS ────────────────────────────────────────────
+  'microsoft','google','alphabet','amazon','meta','apple','netflix',
+  'oracle','sap','salesforce','adobe','ibm','cisco','intel','amd',
+  'nvidia','qualcomm','broadcom','texas instruments','applied materials',
+  'dell','hp','hewlett packard','lenovo','asus','acer','samsung',
+  'lg','sony','panasonic','sharp','fujitsu','nec','hitachi','toshiba',
+  'twitter','x corp','linkedin','snapchat','tiktok','bytedance',
+  'spotify','airbnb','booking','expedia','tripadvisor',
+  'uber','lyft','doordash','instacart','shopify','square','stripe',
+  'paypal','visa','mastercard','american express','amex',
+  'zoom','slack','atlassian','servicenow','workday','veeva',
+  'twilio','sendgrid','cloudflare','datadog','splunk','elastic',
+  'mongodb','redis','confluent','databricks','snowflake','palantir',
+  'vmware','citrix','nutanix','palo alto networks','crowdstrike',
+  'fortinet','checkpoint','symantec','mcafee',
+  'accenture','capgemini','cognizant','infosys bpo','wipro bps',
+  'deloitte','pwc','ey','kpmg','ernst young','bain','mckinsey','bcg',
+  'boston consulting group','roland berger','oliver wyman',
+
+  // ── GLOBAL BANKING & FINANCE ──────────────────────────────────────
+  'jpmorgan','jp morgan','goldman sachs','morgan stanley','citibank',
+  'citi','bank of america','wells fargo','barclays','hsbc',
+  'deutsche bank','bnp paribas','credit suisse','ubs','santander',
+  'ing','ing group','standard chartered','lloyds','natwest',
+  'blackrock','vanguard','fidelity','state street','t rowe price',
+
+  // ── GLOBAL MANUFACTURING ──────────────────────────────────────────
+  'bosch','siemens','honeywell','ge','general electric','3m',
+  'johnson controls','emerson','schneider electric','abb',
+  'caterpillar','deere','john deere','komatsu','volvo','scania',
+  'toyota','honda','nissan','ford','gm','general motors','bmw',
+  'mercedes','volkswagen','audi','porsche','ferrari','tesla',
+  'boeing','airbus','lockheed martin','raytheon','northrop grumman',
+  'shell','bp','chevron','exxon','total energies','conocophillips',
+
+  // ── GLOBAL PHARMA & HEALTHCARE ────────────────────────────────────
+  'johnson & johnson','j&j','pfizer','novartis','roche','merck',
+  'abbvie','bristol myers squibb','bms','astrazeneca','gsk',
+  'glaxosmithkline','sanofi','bayer','eli lilly','amgen',
+  'gilead','biogen','regeneron','moderna','biontech',
+  'medtronic','abbott','becton dickinson','bd','stryker','zimmer',
+
+  // ── GLOBAL RETAIL & FMCG ─────────────────────────────────────────
+  'walmart','target','costco','kroger','tesco','carrefour',
+  'unilever','procter gamble','p&g','nestle','coca cola','pepsi',
+  'colgate','henkel','reckitt','l oreal','loreal','estee lauder',
+  'kraft heinz','mondelez','general mills','kellogg','mars',
+  'nike','adidas','puma','under armour','levi','gap','h&m','zara',
+  'ikea','home depot','lowes',
+
+  // ── BPO & KPO ────────────────────────────────────────────────────
+  'concentrix','teleperformance','conduent','convergys','genpact',
+  'wns','wns global','exl service','exl','igate mastech',
+  'startek','aegis','teletech','ttec','alorica','sitel','synnex',
+
+  // ── STAFFING & RECRUITMENT ───────────────────────────────────────
+  'team lease','teamlease','quess corp','quess','mafoi','ma foi',
+  'adecco','manpower','randstad','kelly services','hays','michael page',
+  'careernet','careernet technologies','abc consultants',
+
+  // ── TANGOE & TELECOM EXPENSE MANAGEMENT ─────────────────────────
+  'tangoe','tangoe inc','cass information','calero software',
+  'vcom','brightpoint','mobile solutions','mobilis','mdsl',
+
+  // ── OTHERS ───────────────────────────────────────────────────────
+  'mu sigma','fractal analytics','tiger analytics','latent view',
+  'absolutdata','crayon data','bridgei2i','bridgei2i analytics',
+  'accenture','capgemini','cognizant technology','dxc technology',
+  'dxc','unisys','csc','computer sciences corporation',
+  'atos','sopra steria','logica','cgi group','cgi'
 ]);
+
+// ── CITY LISTS BY COUNTRY ────────────────────────────────────────────────
+const CITY_LISTS = {
+  'India': ['Bangalore','Mumbai','Delhi','Hyderabad','Chennai','Pune','Kolkata',
+    'Ahmedabad','Noida','Gurgaon','Gurugram','Chandigarh','Jaipur','Kochi',
+    'Coimbatore','Indore','Bhopal','Nagpur','Visakhapatnam','Vadodara',
+    'Surat','Lucknow','Patna','Bhubaneswar','Mysore','Thiruvananthapuram'],
+  'USA': ['New York','San Francisco','Los Angeles','Chicago','Houston',
+    'Seattle','Boston','Austin','Dallas','Atlanta','Miami','Denver',
+    'San Jose','Washington DC','Philadelphia','Phoenix','Portland'],
+  'UK': ['London','Manchester','Birmingham','Leeds','Glasgow','Edinburgh',
+    'Bristol','Liverpool','Sheffield','Newcastle','Cardiff','Belfast'],
+  'UAE': ['Dubai','Abu Dhabi','Sharjah','Ajman','Ras Al Khaimah','Fujairah'],
+  'Singapore': ['Singapore'],
+  'Australia': ['Sydney','Melbourne','Brisbane','Perth','Adelaide','Canberra'],
+  'Canada': ['Toronto','Vancouver','Montreal','Calgary','Ottawa','Edmonton'],
+  'Germany': ['Berlin','Munich','Frankfurt','Hamburg','Cologne','Stuttgart'],
+  'Netherlands': ['Amsterdam','Rotterdam','The Hague','Utrecht','Eindhoven'],
+  'Malaysia': ['Kuala Lumpur','Penang','Johor Bahru','Petaling Jaya','Subang Jaya'],
+  'Other': ['Other City']
+};
+
+function updateCities(){
+  const country = document.getElementById('c-country').value;
+  const citySelect = document.getElementById('c-location');
+  const cities = CITY_LISTS[country] || ['Other City'];
+  citySelect.innerHTML = '<option value="">Select city</option>' +
+    cities.map(c => `<option value="${c}">${c}</option>`).join('');
+}
 
 // Gibberish/fake detection patterns
 function isGibberish(name){

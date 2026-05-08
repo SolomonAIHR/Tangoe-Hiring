@@ -337,7 +337,7 @@ function renderTable(){
         <div class="avatar">${initials}</div>
         <div>
           <div style="font-weight:600;font-size:13px;color:#0f1117">${cand.name||'Unknown'} ${hasVideo?'<span style="font-size:10px;background:rgba(79,142,255,.15);color:#0057ff;padding:2px 6px;border-radius:4px;margin-left:4px">🎥 video</span>':''}</div>
-          <div style="font-size:11px;color:#0057ff;font-weight:500">${c.role||cand.role||''}</div>
+          <div style="font-size:11px;color:#0057ff;font-weight:500">${c.role||cand.role||''}${c.req?` <span style="font-size:10px;background:#f0f4ff;color:#0057ff;border:1px solid #c7d7ff;padding:1px 6px;border-radius:4px;margin-left:4px">${c.req}</span>`:''}</div>
           <div style="font-size:11px;color:#6b7280">${cand.email||''} · ${time}</div>
         </div>
       </div>
@@ -363,7 +363,7 @@ function openCand(idx){
   const resumeBtn = cand.resumeUrl
     ? `<a href="${cand.resumeUrl}" target="_blank" style="margin-left:8px;background:rgba(79,142,255,.12);border:1px solid rgba(79,142,255,.3);color:var(--accent);padding:3px 10px;border-radius:6px;font-size:11px;text-decoration:none">📄 Download Resume</a>`
     : '';
-  document.getElementById('m-meta').innerHTML=`${cand.yoe||''} · ${cand.company?cvIcon+' '+cand.company+' · ':''}${cand.tool||''} · ${cand.email||''} ${resumeBtn}`;
+  document.getElementById('m-meta').innerHTML=`${c.req?`<span style="font-size:11px;background:#f0f4ff;color:#0057ff;border:1px solid #c7d7ff;padding:2px 8px;border-radius:4px;margin-right:8px;font-weight:600">${c.req}</span>`:''}${cand.yoe||''} · ${cand.company?cvIcon+' '+cand.company+' · ':''}${cand.tool||''} · ${cand.email||''} ${resumeBtn}`;
   document.getElementById('m-score').textContent=a.score||'—';
 
   const v=a.verdict||'Pending';

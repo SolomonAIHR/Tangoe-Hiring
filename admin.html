@@ -160,7 +160,110 @@ textarea{resize:vertical}
     <div class="card">
       <div class="card-title">Job Description</div>
       <div class="card-sub">Paste the full JD — Claude will use it to generate role-specific screening questions.</div>
-      <div class="fl"><label>Role title</label><input type="text" id="jd-role" placeholder="e.g. Java Developer, QA Engineer, DevOps..." value=""/></div>
+      <div class="fl"><label>Role title *</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px">
+            <div>
+              <input type="text" id="jd-req" placeholder="REQ# e.g. REQ-2025-001"
+                style="font-family:monospace;letter-spacing:1px;width:100%"
+                oninput="this.value=this.value.toUpperCase()"/>
+              <div style="font-size:11px;color:var(--muted);margin-top:3px">Requisition number (optional)</div>
+            </div>
+            <div>
+              <select id="jd-role-select" onchange="handleRoleSelect(this.value)" style="width:100%">
+                <option value="">-- Select standard title --</option>
+                <optgroup label="Software Engineering">
+                  <option>Java Developer</option>
+                  <option>Senior Java Developer</option>
+                  <option>Lead Java Developer</option>
+                  <option>Python Developer</option>
+                  <option>Full Stack Developer</option>
+                  <option>Frontend Developer</option>
+                  <option>Backend Developer</option>
+                  <option>React Developer</option>
+                  <option>Angular Developer</option>
+                  <option>Node.js Developer</option>
+                  <option>Software Engineer</option>
+                  <option>Senior Software Engineer</option>
+                  <option>Principal Software Engineer</option>
+                </optgroup>
+                <optgroup label="Quality Assurance">
+                  <option>QA Engineer</option>
+                  <option>Senior QA Engineer</option>
+                  <option>QA Lead</option>
+                  <option>QA Manager</option>
+                  <option>Automation Test Engineer</option>
+                  <option>Performance Test Engineer</option>
+                  <option>SDET</option>
+                </optgroup>
+                <optgroup label="DevOps & Cloud">
+                  <option>DevOps Engineer</option>
+                  <option>Senior DevOps Engineer</option>
+                  <option>Site Reliability Engineer (SRE)</option>
+                  <option>Cloud Engineer</option>
+                  <option>AWS Engineer</option>
+                  <option>Azure Engineer</option>
+                  <option>GCP Engineer</option>
+                  <option>Infrastructure Engineer</option>
+                </optgroup>
+                <optgroup label="Data & Analytics">
+                  <option>Data Engineer</option>
+                  <option>Data Analyst</option>
+                  <option>Data Scientist</option>
+                  <option>ML Engineer</option>
+                  <option>AI Engineer</option>
+                  <option>BI Developer</option>
+                  <option>Database Administrator (DBA)</option>
+                </optgroup>
+                <optgroup label="Architecture">
+                  <option>Solution Architect</option>
+                  <option>Technical Architect</option>
+                  <option>Enterprise Architect</option>
+                  <option>Cloud Architect</option>
+                </optgroup>
+                <optgroup label="Management">
+                  <option>Engineering Manager</option>
+                  <option>Technical Lead</option>
+                  <option>Delivery Manager</option>
+                  <option>Project Manager</option>
+                  <option>Product Manager</option>
+                  <option>Scrum Master</option>
+                </optgroup>
+                <optgroup label="SAP">
+                  <option>SAP FICO Consultant</option>
+                  <option>SAP SD Consultant</option>
+                  <option>SAP MM Consultant</option>
+                  <option>SAP HCM Consultant</option>
+                  <option>SAP Basis Administrator</option>
+                  <option>SAP ABAP Developer</option>
+                  <option>SAP S/4HANA Consultant</option>
+                </optgroup>
+                <optgroup label="Functional">
+                  <option>Business Analyst</option>
+                  <option>Systems Analyst</option>
+                  <option>Functional Consultant</option>
+                  <option>Implementation Consultant</option>
+                </optgroup>
+                <optgroup label="Security">
+                  <option>Cybersecurity Analyst</option>
+                  <option>Security Engineer</option>
+                  <option>Penetration Tester</option>
+                  <option>SOC Analyst</option>
+                </optgroup>
+                <optgroup label="Support">
+                  <option>Technical Support Engineer</option>
+                  <option>L1 Support</option>
+                  <option>L2 Support</option>
+                  <option>L3 Support</option>
+                </optgroup>
+                <option value="__custom__">✏️ Enter custom title...</option>
+              </select>
+            </div>
+          </div>
+          <!-- Custom title (shown when custom selected) -->
+          <div id="custom-role-wrap" style="display:none">
+            <input type="text" id="jd-role" placeholder="Enter custom job title..." style="width:100%"/>
+          </div>
+        </div>
       <div class="fl"><label>Paste Job Description</label><textarea id="jd-text" rows="12" placeholder="Paste the full job description here..." oninput="autoDetectRole(this.value)"></textarea></div>
       <div style="display:flex;gap:10px;margin-top:4px">
         <button class="btn btn-primary" onclick="saveJD()">Save JD & Continue →</button>
@@ -388,6 +491,33 @@ Requirements:
 }
 
 // Auto-detect role from pasted JD
+// Handle role selection from dropdown
+function handleRoleSelect(val){
+  const customWrap = document.getElementById('custom-role-wrap');
+  const roleInput = document.getElementById('jd-role');
+  if(val === '__custom__'){
+    customWrap.style.display = 'block';
+    if(roleInput) roleInput.focus();
+  } else {
+    customWrap.style.display = 'none';
+  }
+}
+
+// Get final role value (from dropdown or custom input)
+function getFinalRole(){
+  const sel = document.getElementById('jd-role-select');
+  const customInput = document.getElementById('jd-role');
+  if(sel && sel.value && sel.value !== '__custom__') return sel.value;
+  if(customInput && customInput.value.trim()) return customInput.value.trim();
+  return '';
+}
+
+// Get REQ number
+function getReqNumber(){
+  const req = document.getElementById('jd-req');
+  return req ? req.value.trim() : '';
+}
+
 function autoDetectRole(text){
   if(!text || text.length < 20) return;
   const roleField = document.getElementById('jd-role');
@@ -417,11 +547,12 @@ function autoDetectRole(text){
 }
 
 function saveJD(){
-  const role = document.getElementById('jd-role').value.trim();
+  const role = getFinalRole();
+  const req = getReqNumber();
   const text = document.getElementById('jd-text').value.trim();
   if(!role){
-    alert('Please enter a role title (e.g. Java Developer, QA Engineer).');
-    document.getElementById('jd-role').focus();
+    alert('Please select or enter a job title.');
+    document.getElementById('jd-role-select')?.focus();
     return;
   }
   if(text.length < 50){
@@ -432,7 +563,7 @@ function saveJD(){
   // Clear any old JD from localStorage first
   localStorage.removeItem('active_jd');
   // Save fresh
-  localStorage.setItem('active_jd', JSON.stringify({role, text, savedAt: new Date().toISOString()}));
+  localStorage.setItem('active_jd', JSON.stringify({role, req, text, savedAt: new Date().toISOString()}));
   console.log('JD saved:', {role, textLength: text.length});
   goStep(2);
 }
@@ -447,6 +578,7 @@ async function generateLink(){
 
   const config = {
     role: currentRole || jd.role,
+    req: document.getElementById('jd-req')?.value?.trim() || jd.req || '',
     jd: currentJD || jd.text,
     questions: document.getElementById('cfg-questions').value,
     focus: document.getElementById('cfg-focus').value,
@@ -580,7 +712,14 @@ function copyEmail(e){
 
 function newInterview(){
   document.getElementById('jd-text').value='';
-  document.getElementById('jd-role').value='';
+  const roleSelect = document.getElementById('jd-role-select');
+  if(roleSelect) roleSelect.value = '';
+  const roleInput = document.getElementById('jd-role');
+  if(roleInput) roleInput.value = '';
+  const reqInput = document.getElementById('jd-req');
+  if(reqInput) reqInput.value = '';
+  const customWrap = document.getElementById('custom-role-wrap');
+  if(customWrap) customWrap.style.display = 'none';
   // Clear QR
   const qrDiv = document.getElementById('qr-code');
   if(qrDiv) qrDiv.innerHTML='';
