@@ -577,14 +577,33 @@ function startCameraMonitor(){
       return;
     }
 
-    // ✅ BLACK FRAME DETECTION for video intro step
-    // Check current step — run during both intro (step 3) and interview (step 4)
-    const introPreview = document.getElementById('intro-preview');
-    const camVideo2 = document.getElementById('cam-video2');
-    const activeVideo = introPreview?.srcObject ? introPreview : (camVideo2?.srcObject ? camVideo2 : null);
+    // ✅ BLACK FRAME DETECTION — works on ALL steps
+    // Use any visible video element that has a live stream
+    try{
+      const videoEls = [
+        document.getElementById('intro-preview'),
+        document.getElementById('cam-video2'),
+        document.getElementById('cam-video')
+      ];
+      // Find first video that is playing and has content
+      let activeVideo = null;
+      for(const v of videoEls){
+        if(v && v.readyState >= 2 && v.videoWidth > 0 && !v.paused){
+          activeVideo = v; break;
+        }
+      }
+      // Fallback: use stream's existing video element
+      if(!activeVideo && stream){
+        const tracks = stream.getVideoTracks();
+        if(tracks.length && tracks[0].readyState === 'live'){
+          // Use cam-video as fallback even if paused
+          activeVideo = document.getElementById('cam-video') ||
+                        document.getElementById('cam-video2') ||
+                        document.getElementById('intro-preview');
+        }
+      }
 
-    if(activeVideo){
-      try{
+      if(activeVideo){
         const canvas = document.createElement('canvas');
         canvas.width = 64; canvas.height = 64;
         const ctx = canvas.getContext('2d');
@@ -595,20 +614,32 @@ function startCameraMonitor(){
           totalBrightness += (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
         }
         const avgBrightness = totalBrightness / (pixels.length / 4);
+        console.log('Camera brightness:', Math.round(avgBrightness));
 
         if(avgBrightness < 15){
           tabSwitchCount++;
-          // Show warning on appropriate element
-          const introWarn = document.getElementById('intro-cam-warning');
-          if(introWarn && introWarn.closest('#s3')?.style.display !== 'none'){
-            introWarn.style.display = 'block';
-            introWarn.innerHTML = '🚨 <strong>Camera appears blocked or shutter is closed!</strong> Please uncover your camera to continue. This has been flagged.';
+          const s3 = document.getElementById('s3');
+          const s4 = document.getElementById('s4');
+          const isIntro = s3 && s3.style.display !== 'none';
+          if(isIntro){
+            const introWarn = document.getElementById('intro-cam-warning');
+            if(introWarn){
+              introWarn.style.display='block';
+              introWarn.innerHTML='🚨 <strong>Camera is blocked/covered!</strong> Please uncover your camera immediately. This has been flagged.';
+            }
           } else {
-            showCameraWarning('🚨 <strong>Camera is blocked/covered</strong> — Please uncover your camera immediately. Flagged in report.');
+            showFaceWarning('🚨 <strong>Camera blocked/covered detected!</strong> Please uncover your camera. Auto-closing in <span id="face-countdown">30</span>s');
+            startNoFaceCountdown();
+          }
+        } else if(avgBrightness >= 15){
+          // Camera is visible — reset countdown if it was running due to black frame
+          const introWarn = document.getElementById('intro-cam-warning');
+          if(introWarn && introWarn.innerHTML.includes('blocked')){
+            introWarn.style.display='none';
           }
         }
-      }catch(e){}
-    }
+      }
+    }catch(e){ console.warn('Black frame check error:', e); }
   }, 2000);
 }
 
