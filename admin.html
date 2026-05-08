@@ -430,7 +430,9 @@ const SITE_URL = window.location.origin;
 
 function loadSampleJD(type='qa'){
   if(type === 'java'){
-    document.getElementById('jd-role').value = 'Java Developer';
+    const roleSelect = document.getElementById('jd-role-select');
+    if(roleSelect) roleSelect.value = 'Java Developer';
+    document.getElementById('custom-role-wrap').style.display = 'none';
     document.getElementById('jd-text').value = `Java Developer — Tangoe
 
 About Tangoe:
@@ -464,7 +466,9 @@ Nice to Have:
     return;
   }
   // Default QA sample
-  document.getElementById('jd-role').value = 'QA Engineer';
+  const roleSelectQA = document.getElementById('jd-role-select');
+  if(roleSelectQA) roleSelectQA.value = 'QA Engineer';
+  document.getElementById('custom-role-wrap').style.display = 'none';
   document.getElementById('jd-text').value = `QA Engineer — Tangoe
 
 About Tangoe:
@@ -537,9 +541,20 @@ function autoDetectRole(text){
     if(match && match[1]){
       const detected = match[1].trim().replace(/\s+/g,' ').substring(0, 60);
       if(detected.length > 3){
-        roleField.value = detected;
-        roleField.style.border = '1.5px solid var(--green)';
-        setTimeout(()=>roleField.style.border='', 2000);
+        // Try to find matching option in dropdown first
+        const sel = document.getElementById('jd-role-select');
+        const matchingOpt = sel ? Array.from(sel.options).find(o => 
+          o.value.toLowerCase().includes(detected.toLowerCase().split(' ')[0])) : null;
+        if(matchingOpt && matchingOpt.value){
+          sel.value = matchingOpt.value;
+          document.getElementById('custom-role-wrap').style.display = 'none';
+        } else {
+          // Fall back to custom input
+          sel.value = '__custom__';
+          document.getElementById('custom-role-wrap').style.display = 'block';
+          const customInput = document.getElementById('jd-role');
+          if(customInput){ customInput.value = detected; customInput.style.border='1.5px solid var(--green)'; setTimeout(()=>customInput.style.border='',2000); }
+        }
         return;
       }
     }
