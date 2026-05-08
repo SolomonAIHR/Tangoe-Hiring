@@ -90,7 +90,7 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
   .g2{grid-template-columns:1fr}
 }
 .no-select{user-select:none;-webkit-user-select:none}
-#face-warning{display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#dc2626;color:#fff;padding:12px 20px;font-size:14px;font-weight:600;text-align:center;animation:pulse 1s infinite}
+#face-warning{display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#dc2626;color:#fff;padding:16px 20px;font-size:15px;font-weight:700;text-align:center;animation:pulse 0.5s infinite;box-shadow:0 4px 20px rgba(220,38,38,0.5)}
 #face-countdown{font-size:18px;font-weight:800}
 #fullscreen-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:#d97706;color:#fff;padding:10px 20px;font-size:13px;font-weight:600;text-align:center;cursor:pointer}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.85}}
@@ -450,7 +450,15 @@ function showBlockedPage(message, reason){
 
 // Config-derived constants (read lazily from config object)
 function getTOTAL_Q(){ return parseInt(config.questions)||6; }
-function getROLE(){ return config.role||config.jd?.split('\n')[0]?.trim()||'Interview'; }
+function getROLE(){ 
+  if(config.role && config.role.trim()) return config.role.trim();
+  // Try to extract from first line of JD
+  if(config.jd){
+    const firstLine = config.jd.split('\n')[0].trim();
+    if(firstLine && firstLine.length < 80) return firstLine;
+  }
+  return 'Screening Interview';
+}
 function getJD(){ return config.jd||''; }
 function getPHOTO_INTERVAL(){ return (parseInt(config.photoInterval)||60)*1000; }
 
@@ -593,7 +601,7 @@ let noFaceTimer = null;
 let noFaceSeconds = 0;
 let faceWarningCount = 0;
 let faceDetectionInterval = null;
-const NO_FACE_LIMIT = 30;
+const NO_FACE_LIMIT = 30; // seconds before auto-terminate
 
 async function loadFaceModels(){
   try{
@@ -636,11 +644,31 @@ async function startFaceDetection(){
 function startNoFaceCountdown(){
   if(noFaceTimer) return;
   noFaceSeconds = NO_FACE_LIMIT;
-  showFaceWarning('⚠️ Face not detected — Look at camera! Auto-closing in <span id="face-countdown">30</span>s');
+  // Play beep sound warning
+  try{
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    osc.connect(ctx.destination);
+    osc.frequency.value = 880;
+    osc.start(); osc.stop(ctx.currentTime + 0.3);
+  }catch(e){}
+  showFaceWarning(`🚨 <strong>CAMERA MANDATORY</strong> — Face not detected! Interview will terminate in <span id="face-countdown">${NO_FACE_LIMIT}</span> seconds. Look at your camera now!`);
+  
   noFaceTimer = setInterval(()=>{
     noFaceSeconds--;
     const cd = document.getElementById('face-countdown');
     if(cd) cd.textContent = noFaceSeconds;
+    
+    // Flash warning every 5 seconds
+    if(noFaceSeconds % 5 === 0 && noFaceSeconds > 0){
+      try{
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        osc.connect(ctx.destination);
+        osc.frequency.value = 440;
+        osc.start(); osc.stop(ctx.currentTime + 0.2);
+      }catch(e){}
+    }
     if(noFaceSeconds <= 0){ clearInterval(noFaceTimer); noFaceTimer=null; autoCloseInterview(); }
   }, 1000);
 }
