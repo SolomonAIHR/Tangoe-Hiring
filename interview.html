@@ -130,7 +130,7 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
   <!-- STEP 1: Details -->
   <div id="s1">
     <div class="card">
-      <div class="card-title" id="s1-title">Tangoe · Interview</div>
+      <div class="card-title" id="s1-title">Loading interview...</div>
       <div class="card-sub">Complete this proctored AI screening interview. It takes 15–20 minutes. Answer from your own experience — not from notes or other tools.</div>
 
       <div class="g2">
@@ -362,7 +362,7 @@ async function loadConfig(){
   const urlRole = urlParams.get('role');
   if(urlRole){
     config = {
-      role: urlRole, jd: '',
+      role: urlRole||'', jd: '',
       questions: parseInt(urlParams.get('q'))||6,
       level: urlParams.get('level')||'mid',
       focus: 'balanced', camera: true,
@@ -373,7 +373,7 @@ async function loadConfig(){
 
   // DEFAULT fallback
   config = {
-    role: 'QA Engineer', questions: 6, focus: 'balanced', level: 'mid',
+    role: '', questions: 6, focus: 'balanced', level: 'mid',
     camera: true, pasteDetect: true, tabDetect: true, photoInterval: 60, jd: ''
   };
 }
@@ -450,7 +450,7 @@ function showBlockedPage(message, reason){
 
 // Config-derived constants (read lazily from config object)
 function getTOTAL_Q(){ return parseInt(config.questions)||6; }
-function getROLE(){ return config.role||'QA Engineer'; }
+function getROLE(){ return config.role||config.jd?.split('\n')[0]?.trim()||'Interview'; }
 function getJD(){ return config.jd||''; }
 function getPHOTO_INTERVAL(){ return (parseInt(config.photoInterval)||60)*1000; }
 
