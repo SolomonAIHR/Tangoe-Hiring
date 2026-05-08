@@ -160,8 +160,8 @@ textarea{resize:vertical}
     <div class="card">
       <div class="card-title">Job Description</div>
       <div class="card-sub">Paste the full JD — Claude will use it to generate role-specific screening questions.</div>
-      <div class="fl"><label>Role title</label><input type="text" id="jd-role" placeholder="e.g. QA Engineer" value="QA Engineer"/></div>
-      <div class="fl"><label>Paste Job Description</label><textarea id="jd-text" rows="12" placeholder="Paste the full job description here..."></textarea></div>
+      <div class="fl"><label>Role title</label><input type="text" id="jd-role" placeholder="e.g. Java Developer, QA Engineer, DevOps..." value=""/></div>
+      <div class="fl"><label>Paste Job Description</label><textarea id="jd-text" rows="12" placeholder="Paste the full job description here..." oninput="autoDetectRole(this.value)"></textarea></div>
       <div style="display:flex;gap:10px;margin-top:4px">
         <button class="btn btn-primary" onclick="saveJD()">Save JD & Continue →</button>
         <button class="btn btn-out" onclick="loadSampleJD()">Load sample QA JD</button>
@@ -325,7 +325,10 @@ textarea{resize:vertical}
 const SITE_URL = window.location.origin;
 
 function loadSampleJD(){
-  document.getElementById('jd-role').value = 'QA Engineer';
+  // Keep role as is when loading sample — user should set their own role
+  if(!document.getElementById('jd-role').value){
+    document.getElementById('jd-role').value = 'QA Engineer';
+  }
   document.getElementById('jd-text').value = `QA Engineer — Tangoe
 
 About Tangoe:
@@ -349,6 +352,35 @@ Requirements:
 - Familiarity with CI/CD pipelines (Jenkins, GitHub Actions)
 - Good understanding of Agile/Scrum methodology
 - Experience with SQL for database validation`;
+}
+
+// Auto-detect role from pasted JD
+function autoDetectRole(text){
+  if(!text || text.length < 20) return;
+  const roleField = document.getElementById('jd-role');
+  if(roleField.value && roleField.value !== 'QA Engineer') return; // don't override if already set
+
+  // Common role patterns to detect
+  const patterns = [
+    /(?:hiring|looking for|position[:\s]+|role[:\s]+|title[:\s]+)\s*(?:a\s+|an\s+)?([A-Z][a-zA-Z\s\-\/]+(?:Engineer|Developer|Manager|Analyst|Architect|Lead|Specialist|Consultant|Designer|Tester|DevOps|SRE|QA|BA|PM|DBA|Admin))/i,
+    /^([A-Z][a-zA-Z\s\-\/]+(?:Engineer|Developer|Manager|Analyst|Architect|Lead|Specialist|Consultant|Designer|Tester|DevOps|SRE|QA|BA|PM|DBA|Admin))/m,
+    /Job Title[:\s]+([A-Z][a-zA-Z\s\-\/]+)/i,
+    /Position[:\s]+([A-Z][a-zA-Z\s\-\/]+)/i,
+    /Role[:\s]+([A-Z][a-zA-Z\s\-\/]+)/i,
+  ];
+
+  for(const pattern of patterns){
+    const match = text.match(pattern);
+    if(match && match[1]){
+      const detected = match[1].trim().replace(/\s+/g,' ').substring(0, 60);
+      if(detected.length > 3){
+        roleField.value = detected;
+        roleField.style.border = '1.5px solid var(--green)';
+        setTimeout(()=>roleField.style.border='', 2000);
+        return;
+      }
+    }
+  }
 }
 
 function saveJD(){
@@ -400,15 +432,24 @@ async function generateLink(){
       body:JSON.stringify(config)
     });
     const data = await saveRes.json();
+    console.log('save-jd response:', saveRes.status, data);
     if(data.id){
       config.shortId = data.id;
-      // Update saved config with shortId
       configs[0].shortId = data.id;
       localStorage.setItem('interview_configs', JSON.stringify(configs.slice(0,50)));
       url = `${SITE_URL}/interview.html?id=${data.id}`;
-    } else { throw new Error('No ID returned'); }
+    } else {
+      throw new Error(data.error || 'No ID returned: ' + JSON.stringify(data));
+    }
   }catch(e){
-    console.warn('save-jd failed, using cfg64 fallback:', e);
+    console.error('save-jd failed:', e);
+    // Show error to recruiter
+    const errDiv = document.getElementById('link-gen-error') || document.createElement('div');
+    errDiv.id = 'link-gen-error';
+    errDiv.style.cssText = 'background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:12px;color:#dc2626;margin-top:10px';
+    errDiv.innerHTML = `⚠️ Short link failed: ${e.message}. Using long URL as fallback.`;
+    document.getElementById('link-box')?.appendChild(errDiv);
+
     const payload = btoa(unescape(encodeURIComponent(JSON.stringify({
       role:config.role, jd:config.jd, questions:config.questions,
       focus:config.focus, level:config.level, camera:config.camera,
@@ -491,7 +532,7 @@ function copyEmail(e){
 
 function newInterview(){
   document.getElementById('jd-text').value='';
-  document.getElementById('jd-role').value='QA Engineer';
+  document.getElementById('jd-role').value='';
   // Clear QR
   const qrDiv = document.getElementById('qr-code');
   if(qrDiv) qrDiv.innerHTML='';
