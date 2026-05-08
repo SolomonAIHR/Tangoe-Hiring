@@ -528,6 +528,74 @@ let tabSwitchCount=0;
 
 // Titles updated after config loads (see async loadConfig block below)
 
+// ── SIMPLE CAMERA HEALTH CHECK (runs every second) ──────────────────────
+let _camCheckInterval = null;
+let _camOffSeconds = 0;
+
+function startSimpleCamCheck(){
+  if(_camCheckInterval) return;
+  _camCheckInterval = setInterval(()=>{
+    // Only run during step 3 (video intro) or step 4 (interview)
+    const s3 = document.getElementById('s3');
+    const s4 = document.getElementById('s4');
+    const active = (s3?.style.display !== 'none') || (s4?.style.display !== 'none');
+    if(!active){ _camOffSeconds = 0; return; }
+    if(!stream){ _camOffSeconds++; }
+    else{
+      const tracks = stream.getVideoTracks();
+      const trackOff = !tracks.length || tracks[0].readyState === 'ended' || !tracks[0].enabled;
+      if(trackOff){ _camOffSeconds++; }
+      else{
+        // Try pixel brightness check
+        try{
+          const v = document.getElementById('intro-preview') ||
+                    document.getElementById('cam-video2') ||
+                    document.getElementById('cam-video');
+          if(v && v.readyState >= 2 && v.videoWidth > 0){
+            const c = document.createElement('canvas');
+            c.width = 32; c.height = 32;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(v,0,0,32,32);
+            const d = ctx.getImageData(0,0,32,32).data;
+            let b = 0;
+            for(let i=0;i<d.length;i+=4) b+=(d[i]+d[i+1]+d[i+2])/3;
+            const avg = b/(d.length/4);
+            if(avg < 10){ _camOffSeconds++; }
+            else { _camOffSeconds = 0; }
+          } else { _camOffSeconds = 0; }
+        }catch(e){ _camOffSeconds = 0; }
+      }
+    }
+
+    if(_camOffSeconds > 0){
+      const remaining = Math.max(0, 30 - _camOffSeconds);
+      const msg = `🚨 <strong>Camera issue detected!</strong> Please check your camera. Interview terminates in ${remaining}s`;
+      // Show on current step
+      const introWarn = document.getElementById('intro-cam-warning');
+      const s3vis = s3?.style.display !== 'none';
+      if(s3vis && introWarn){ introWarn.style.display='block'; introWarn.innerHTML=msg; }
+      else { showFaceWarning(msg); }
+      // Update countdown
+      const cd = document.getElementById('face-countdown');
+      if(cd) cd.textContent = remaining;
+    } else {
+      // Camera OK — hide warnings
+      const introWarn = document.getElementById('intro-cam-warning');
+      if(introWarn && introWarn.style.display !== 'none' && introWarn.innerHTML.includes('Camera issue')){
+        introWarn.style.display='none';
+      }
+      hideFaceWarning();
+    }
+
+    if(_camOffSeconds >= 30){
+      clearInterval(_camCheckInterval);
+      _camCheckInterval = null;
+      tabSwitchCount += 5;
+      autoCloseInterview();
+    }
+  }, 1000);
+}
+
 // Tab switch detection
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){
@@ -1048,6 +1116,7 @@ async function startCamera(){
     // Start monitoring camera for manual switch-off
     attachCameraEndListener();
     startCameraMonitor();
+    startSimpleCamCheck();
     startFaceDetection();
     startFullscreenEnforcement();
   }catch(e){
