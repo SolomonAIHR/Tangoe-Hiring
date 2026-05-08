@@ -485,7 +485,12 @@ let TOTAL_Q = 6, ROLE = 'QA Engineer', JD = '', PHOTO_INTERVAL = 60000;
   ROLE = getROLE();
   JD = getJD();
   PHOTO_INTERVAL = getPHOTO_INTERVAL();
-  console.log('Config loaded:', {role: config.role, ROLE, hasJD: !!JD, jdLength: JD.length, configKeys: Object.keys(config)});
+  console.log('Config loaded:', {role: config.role, ROLE, hasJD: !!JD, jdLength: JD.length, questions: TOTAL_Q, configKeys: Object.keys(config)});
+  // Update question dots to match configured count
+  const dotsContainer = document.getElementById('q-dots');
+  if(dotsContainer){
+    dotsContainer.innerHTML = Array(TOTAL_Q).fill('<span class="dot"></span>').join('');
+  }
   // Update all title elements after config is loaded
   const titleEls = document.querySelectorAll('#s1-title, #int-label, [data-role-title]');
   // Force title update with multiple retries
@@ -659,12 +664,19 @@ let faceDetectionInterval = null;
 const NO_FACE_LIMIT = 30; // seconds before auto-terminate
 
 async function loadFaceModels(){
-  try{
-    await faceapi.nets.tinyFaceDetector.loadFromUri(
-      'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights'
-    );
-    return true;
-  }catch(e){ console.warn('face-api load failed',e); return false; }
+  const modelUrls = [
+    'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights',
+    'https://rawgit.com/justadudewhohacks/face-api.js/master/weights'
+  ];
+  for(const url of modelUrls){
+    try{
+      await faceapi.nets.tinyFaceDetector.loadFromUri(url);
+      console.log('Face models loaded from:', url);
+      return true;
+    }catch(e){ console.warn('Failed to load from', url, e); }
+  }
+  console.warn('Face detection unavailable — using black frame detection only');
+  return false;
 }
 
 async function startFaceDetection(){
@@ -672,7 +684,7 @@ async function startFaceDetection(){
   const loaded = await loadFaceModels();
   if(!loaded) return;
   faceDetectionActive = true;
-
+  // Run interval regardless — black frame detection works without models
   faceDetectionInterval = setInterval(async ()=>{
     if(!faceDetectionActive) return;
     try{
@@ -699,19 +711,22 @@ async function startFaceDetection(){
         }
       }catch(e2){}
 
-      const detections = await faceapi.detectAllFaces(
-        videoEl, new faceapi.TinyFaceDetectorOptions({inputSize:224, scoreThreshold:0.4})
-      );
-      if(detections.length === 0){
-        startNoFaceCountdown();
-      } else if(detections.length > 1){
-        faceWarningCount++;
-        tabSwitchCount++;
-        showFaceWarning(`⚠️ Multiple faces detected (${faceWarningCount}x) — Only candidate should be visible. Flagged.`);
-        resetNoFaceCountdown();
-      } else {
-        resetNoFaceCountdown();
-        hideFaceWarning();
+      // Only run face detection if models are loaded
+      if(faceapi.nets.tinyFaceDetector.isLoaded){
+        const detections = await faceapi.detectAllFaces(
+          videoEl, new faceapi.TinyFaceDetectorOptions({inputSize:224, scoreThreshold:0.4})
+        );
+        if(detections.length === 0){
+          startNoFaceCountdown();
+        } else if(detections.length > 1){
+          faceWarningCount++;
+          tabSwitchCount++;
+          showFaceWarning(`⚠️ Multiple faces detected (${faceWarningCount}x) — Only candidate should be visible. Flagged.`);
+          resetNoFaceCountdown();
+        } else {
+          resetNoFaceCountdown();
+          hideFaceWarning();
+        }
       }
     }catch(e){}
   }, 3000);
@@ -1014,14 +1029,20 @@ CANDIDATE INFO:
 
 YOUR GOAL: Assess if this candidate genuinely meets the JD requirements above.
 
+INTERVIEW CONFIGURATION:
+- Number of questions: ${TOTAL_Q}
+- Experience level expected: ${config.level === 'junior' ? 'Junior (0-2 years) — ask foundational concepts' : config.level === 'senior' ? 'Senior (5+ years) — ask deep technical and leadership questions' : 'Mid-level (2-5 years) — ask practical hands-on experience'}
+- Interview focus: ${config.focus === 'technical' ? 'Technical depth — focus heavily on technical skills, architecture, coding' : config.focus === 'behavioral' ? 'Behavioral — focus on past experiences, teamwork, problem solving' : 'Balanced — mix of technical skills and behavioral questions'}
+
 STRICT RULES:
 1. Ask ONE question at a time — never multiple questions together
 2. EVERY question must reference a specific requirement from the JD above
 3. Do NOT ask generic questions — ask about the EXACT skills, tools, technologies mentioned in the JD
-4. Probe for: specific tools used, real project examples, actual metrics/outcomes
-5. If answer is vague or too short: ask for a concrete example from recent work
-6. Cover different JD areas: technical skills, past projects, specific tools, problem solving
-7. After exactly ${TOTAL_Q} candidate answers, output ONLY:
+4. Calibrate difficulty to the experience level specified above
+5. Probe for: specific tools used, real project examples, actual metrics/outcomes
+6. If answer is vague or too short: ask for a concrete example from recent work
+7. Cover different JD areas: technical skills, past projects, specific tools, problem solving
+8. After exactly ${TOTAL_Q} candidate answers, output ONLY:
 Line 1: DONE
 Line 2: valid JSON (no markdown):
 {"verdict":"Strong Yes","score":8,"strengths":["X","Y"],"concerns":["Z"],"jdMatch":85,"summary":"2 sentence summary comparing candidate to JD requirements."}
