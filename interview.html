@@ -462,12 +462,20 @@ let TOTAL_Q = 6, ROLE = 'QA Engineer', JD = '', PHOTO_INTERVAL = 60000;
   ROLE = getROLE();
   JD = getJD();
   PHOTO_INTERVAL = getPHOTO_INTERVAL();
+  console.log('Config loaded:', {role: config.role, ROLE, hasJD: !!JD, jdLength: JD.length, configKeys: Object.keys(config)});
   // Update all title elements after config is loaded
   const titleEls = document.querySelectorAll('#s1-title, #int-label, [data-role-title]');
-  document.querySelectorAll('#s1-title').forEach(el => el.textContent = ROLE+' · Tangoe');
-  document.querySelectorAll('#int-label').forEach(el => el.textContent = ROLE+' Interview · Tangoe');
-  // Update browser tab title
-  document.title = ROLE + ' · Tangoe Interview';
+  // Force title update — use setTimeout to ensure DOM is rendered
+  const updateTitles = () => {
+    const t1 = document.getElementById('s1-title');
+    const t2 = document.getElementById('int-label');
+    if(t1) t1.textContent = ROLE + ' · Tangoe';
+    if(t2) t2.textContent = ROLE + ' Interview · Tangoe';
+    document.title = ROLE + ' · Tangoe Interview';
+    console.log('Titles updated to:', ROLE);
+  };
+  updateTitles();
+  setTimeout(updateTitles, 500); // retry after 500ms
 
   // ✅ Check device eligibility on page load (before any form shown)
   const shortId = urlParams.get('id');
