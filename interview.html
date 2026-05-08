@@ -90,7 +90,7 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
   .g2{grid-template-columns:1fr}
 }
 .no-select{user-select:none;-webkit-user-select:none}
-#face-warning{display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#dc2626;color:#fff;padding:16px 20px;font-size:15px;font-weight:700;text-align:center;animation:pulse 0.5s infinite;box-shadow:0 4px 20px rgba(220,38,38,0.5)}
+#face-warning{display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#dc2626;color:#fff;padding:16px 20px;font-size:15px;font-weight:700;text-align:center;box-shadow:0 4px 20px rgba(220,38,38,0.5)}
 #face-countdown{font-size:18px;font-weight:800}
 #fullscreen-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:#d97706;color:#fff;padding:10px 20px;font-size:13px;font-weight:600;text-align:center;cursor:pointer}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.85}}
@@ -537,28 +537,25 @@ function startSimpleCamCheck(){
   console.log('Camera monitor started');
 
   _camCheckInterval = setInterval(()=>{
-    // Check if we are in an active proctored step
-    // currentStep is set by setStep()
     if(typeof currentStep === 'undefined' || currentStep < 3) return;
 
     let camBad = false;
     let reason = '';
 
     // Check 1: stream gone
-    if(!stream){ camBad = true; reason = 'No stream'; }
+    if(!stream){ camBad = true; reason = 'Camera not found'; }
     else {
       const tracks = stream.getVideoTracks();
-      // Check 2: track ended or disabled
-      if(!tracks.length){ camBad = true; reason = 'No tracks'; }
-      else if(tracks[0].readyState === 'ended'){ camBad = true; reason = 'Track ended'; }
-      else if(!tracks[0].enabled){ camBad = true; reason = 'Track disabled'; }
+      if(!tracks.length){ camBad = true; reason = 'Camera not found'; }
+      else if(tracks[0].readyState === 'ended'){ camBad = true; reason = 'Camera disconnected'; }
+      else if(!tracks[0].enabled){ camBad = true; reason = 'Camera disabled'; }
       else {
-        // Check 3: black frame
+        // Black frame = face not visible
         try{
           const v = document.getElementById('intro-preview') ||
                     document.getElementById('cam-video2') ||
                     document.getElementById('cam-video');
-          if(v && v.videoWidth > 0 && !v.paused){
+          if(v && v.videoWidth > 0){
             const c = document.createElement('canvas');
             c.width = 32; c.height = 32;
             const ctx = c.getContext('2d');
@@ -567,34 +564,102 @@ function startSimpleCamCheck(){
             let b = 0;
             for(let i=0; i<d.length; i+=4) b += (d[i]+d[i+1]+d[i+2])/3;
             const avg = Math.round(b/(d.length/4));
-            if(avg < 10){ camBad = true; reason = 'Black frame ('+avg+')'; }
+            if(avg < 10){ camBad = true; reason = 'Face not visible'; }
           }
         }catch(e){}
       }
     }
 
+    const GRACE = 10; // 10 seconds grace for BOTH intro and interview
+
     if(camBad){
       _camOffSeconds++;
-      console.warn('Camera bad:', reason, '| seconds:', _camOffSeconds);
-      const remaining = Math.max(0, 30 - _camOffSeconds);
-      const msg = `🚨 <strong>Camera issue: ${reason}</strong> — Please fix your camera now. Terminates in ${remaining}s`;
-      const introWarn = document.getElementById('intro-cam-warning');
-      if(currentStep === 3 && introWarn){
-        introWarn.style.display = 'block';
-        introWarn.innerHTML = msg;
-      } else {
-        showFaceWarning(msg);
+      console.warn('Camera:', reason, '| seconds:', _camOffSeconds);
+
+      // ── BEEP every second while camera is bad ──────────────────────
+      try{
+        const actx = new AudioContext();
+        const osc = actx.createOscillator();
+        const gain = actx.createGain();
+        osc.connect(gain); gain.connect(actx.destination);
+        osc.frequency.value = _camOffSeconds >= GRACE ? 1200 : 880;
+        gain.gain.setValueAtTime(0.3, actx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.3);
+        osc.start(); osc.stop(actx.currentTime + 0.3);
+      }catch(e){}
+
+      const remaining = Math.max(0, GRACE - _camOffSeconds);
+
+      // ── STEP 3 (Video Intro) ───────────────────────────────────────
+      if(currentStep === 3){
+        const introWarn = document.getElementById('intro-cam-warning');
+        if(introWarn){
+          introWarn.style.cssText = 'display:block!important;background:#dc2626;color:#fff;border-radius:8px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:12px;border:none';
+          introWarn.innerHTML = remaining > 0
+            ? `🚨 Face not visible — ${reason}! Uncover your camera NOW. Recording stopped. Terminating in <strong>${remaining}s</strong>`
+            : `🚨 Terminating interview — face not visible for ${GRACE} seconds`;
+        }
+        // Stop recording immediately
+        if(introRecorder && introRecorder.state === 'recording'){
+          introRecorder.pause();
+          const stopBtn = document.getElementById('intro-stop-btn');
+          if(stopBtn) stopBtn.innerHTML = '⏸ Recording paused — show face to resume';
+        }
+        tabSwitchCount++;
+        if(_camOffSeconds >= GRACE){
+          clearInterval(_camCheckInterval);
+          _camCheckInterval = null;
+          autoCloseInterview();
+        }
       }
-      if(_camOffSeconds >= 30){
-        clearInterval(_camCheckInterval);
-        _camCheckInterval = null;
-        autoCloseInterview();
+
+      // ── STEP 4 (Interview) ─────────────────────────────────────────
+      else if(currentStep === 4){
+        // Disable answer input
+        const inp = document.getElementById('ans');
+        if(inp) inp.disabled = true;
+        const btn = document.getElementById('send-btn');
+        if(btn){ btn.disabled = true; btn.textContent = '⚠️ Camera required'; }
+
+        showFaceWarning(
+          remaining > 0
+            ? `🚨 <strong>Face not visible — ${reason}!</strong> Show your face to resume. Interview terminates in <strong>${remaining}s</strong>`
+            : `🚨 Terminating interview — face not visible for ${GRACE} seconds`
+        );
+        tabSwitchCount++;
+        if(_camOffSeconds >= GRACE){
+          clearInterval(_camCheckInterval);
+          _camCheckInterval = null;
+          autoCloseInterview();
+        }
       }
+
     } else {
-      if(_camOffSeconds > 0) console.log('Camera restored');
+      // ── CAMERA OK — face visible ───────────────────────────────────
+      if(_camOffSeconds > 0){
+        console.log('Face restored after', _camOffSeconds, 'seconds');
+        tabSwitchCount++; // flag the interruption even if restored
+
+        // Resume recording in intro
+        if(currentStep === 3 && introRecorder && introRecorder.state === 'paused'){
+          introRecorder.resume();
+          const stopBtn = document.getElementById('intro-stop-btn');
+          if(stopBtn) stopBtn.innerHTML = '⏹ Stop recording';
+        }
+        // Re-enable input in interview
+        if(currentStep === 4){
+          const inp = document.getElementById('ans');
+          if(inp) inp.disabled = false;
+          const btn = document.getElementById('send-btn');
+          if(btn){ btn.disabled = false; btn.textContent = 'Send →'; }
+        }
+      }
+
       _camOffSeconds = 0;
+
+      // Keep warning visible until face confirmed visible — then hide
       const introWarn = document.getElementById('intro-cam-warning');
-      if(introWarn && introWarn.innerHTML.includes('Camera issue')){
+      if(introWarn && introWarn.style.display !== 'none'){
         introWarn.style.display = 'none';
       }
       hideFaceWarning();
