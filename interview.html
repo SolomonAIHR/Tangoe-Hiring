@@ -456,7 +456,7 @@ function showBlockedPage(message, reason){
         </div>
         <div style="font-size:12px;color:#9ca3af;">
           If you believe this is an error, please contact<br/>
-          <strong style="color:#0057ff;">talent@tangoe.com</strong>
+          <strong style="color:#0057ff;">taindia@tangoe.com</strong>
         </div>
         <div style="margin-top:20px;font-size:11px;color:#d1d5db;">Tangoe AI Hiring System · Device ID: ${DEVICE_FINGERPRINT}</div>
       </div>
@@ -531,6 +531,7 @@ let tabSwitchCount=0;
 // ── SIMPLE CAMERA HEALTH CHECK (runs every second) ──────────────────────
 let _camCheckInterval = null;
 let _camOffSeconds = 0;
+let _camGoodSeconds = 0;
 
 function startSimpleCamCheck(){
   if(_camCheckInterval) return;
@@ -570,10 +571,11 @@ function startSimpleCamCheck(){
       }
     }
 
-    const GRACE = 10; // 10 seconds grace for BOTH intro and interview
+    const GRACE = 15; // 15 seconds grace for BOTH intro and interview
 
     if(camBad){
       _camOffSeconds++;
+      _camGoodSeconds = 0; // reset good counter
       console.warn('Camera:', reason, '| seconds:', _camOffSeconds);
 
       // ── BEEP every second while camera is bad ──────────────────────
@@ -595,9 +597,7 @@ function startSimpleCamCheck(){
         const introWarn = document.getElementById('intro-cam-warning');
         if(introWarn){
           introWarn.style.cssText = 'display:block!important;background:#dc2626;color:#fff;border-radius:8px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:12px;border:none';
-          introWarn.innerHTML = remaining > 0
-            ? `🚨 Face not visible — ${reason}! Uncover your camera NOW. Recording stopped. Terminating in <strong>${remaining}s</strong>`
-            : `🚨 Terminating interview — face not visible for ${GRACE} seconds`;
+          introWarn.innerHTML = `🚨 <strong>Camera screen is black — face not visible!</strong> Please uncover your camera immediately. Recording is paused.${remaining > 0 ? ` Terminating in <strong style="font-size:16px">${remaining}s</strong>` : ' Terminating now...'}`;
         }
         // Stop recording immediately
         if(introRecorder && introRecorder.state === 'recording'){
@@ -621,11 +621,7 @@ function startSimpleCamCheck(){
         const btn = document.getElementById('send-btn');
         if(btn){ btn.disabled = true; btn.textContent = '⚠️ Camera required'; }
 
-        showFaceWarning(
-          remaining > 0
-            ? `🚨 <strong>Face not visible — ${reason}!</strong> Show your face to resume. Interview terminates in <strong>${remaining}s</strong>`
-            : `🚨 Terminating interview — face not visible for ${GRACE} seconds`
-        );
+        showFaceWarning(`🚨 <strong>Camera screen is black — face not visible!</strong> Please look at your camera now.${remaining > 0 ? ` Interview terminates in <strong style="font-size:18px">${remaining}s</strong>` : ' Terminating now...'}`);
         tabSwitchCount++;
         if(_camOffSeconds >= GRACE){
           clearInterval(_camCheckInterval);
@@ -656,13 +652,17 @@ function startSimpleCamCheck(){
       }
 
       _camOffSeconds = 0;
+      _camGoodSeconds = (_camGoodSeconds||0) + 1;
 
-      // Keep warning visible until face confirmed visible — then hide
-      const introWarn = document.getElementById('intro-cam-warning');
-      if(introWarn && introWarn.style.display !== 'none'){
-        introWarn.style.display = 'none';
+      // Only hide warning after face has been visible for 2 consecutive seconds
+      if(_camGoodSeconds >= 2){
+        const introWarn = document.getElementById('intro-cam-warning');
+        if(introWarn && introWarn.style.display !== 'none'){
+          introWarn.style.display = 'none';
+          introWarn.innerHTML = '';
+        }
+        hideFaceWarning();
       }
-      hideFaceWarning();
     }
   }, 1000);
 }
@@ -1015,7 +1015,7 @@ async function autoCloseInterview(){
           This may happen if you moved away from the camera, covered it, or switched to another application.<br/><br/>
           Your partial responses have been saved and flagged for review.
         </div>
-        <div style="font-size:12px;color:#9ca3af">If you believe this is an error, contact <strong style="color:#0057ff">talent@tangoe.com</strong></div>
+        <div style="font-size:12px;color:#9ca3af">If you believe this is an error, contact <strong style="color:#0057ff">taindia@tangoe.com</strong></div>
         <div style="margin-top:16px;font-size:11px;color:#d1d5db">Tangoe AI Hiring · Event: ${Date.now()}</div>
       </div>
     </div>`;
