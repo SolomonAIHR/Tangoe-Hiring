@@ -1,11 +1,22 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta http-equiv="refresh" content="0; url=/admin.html"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="refresh" content="0; url=admin.html"/>
   <title>Tangoe Screening Portal</title>
+  <style>
+    body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;
+    min-height:100vh;margin:0;background:#0a0d14;color:#22c97a;flex-direction:column;gap:12px}
+    .logo{font-size:28px;font-weight:800}
+    .msg{font-size:13px;color:#6b7394}
+  </style>
 </head>
 <body>
-  <script>window.location.replace('/admin.html');</script>
+  <div class="logo">tangoe</div>
+  <div class="msg">Loading Screening Portal...</div>
+  <script>
+    setTimeout(function(){ window.location.href = 'admin.html'; }, 300);
+  </script>
 </body>
 </html>
