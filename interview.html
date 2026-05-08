@@ -569,7 +569,7 @@ function startSimpleCamCheck(){
             for(let i=0; i<d.length; i+=4) b += (d[i]+d[i+1]+d[i+2])/3;
             const avg = Math.round(b/(d.length/4));
             console.log('Brightness check ['+v.id+']:', avg);
-            if(avg < 15){ camBad = true; reason = 'Face not visible (dark screen)'; }
+            if(avg < 40){ camBad = true; reason = `Face not visible (brightness:${avg})`; }
             checked = true;
             break;
           }
@@ -913,7 +913,7 @@ async function startFaceDetection(){
           totalBrightness += (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
         }
         const avgBrightness = totalBrightness / (pixels.length/4);
-        if(avgBrightness < 15){ // Very dark = shutter closed or covered
+        if(avgBrightness < 40){ // Dark screen = covered or face not visible
           tabSwitchCount++;
           showFaceWarning('🚨 <strong>Camera appears to be covered or blocked!</strong> Please uncover your camera immediately. Interview will terminate in <span id="face-countdown">30</span>s');
           startNoFaceCountdown();
@@ -2116,7 +2116,16 @@ function startIntroRecording(){
   introRecorder.start(1000);
   const prev=document.getElementById('intro-preview');
   prev.style.display='block';
-  if(stream){prev.srcObject=stream;prev.muted=true;prev.play().catch(e=>{});}
+  if(stream){
+    prev.srcObject=stream;
+    prev.muted=true;
+    prev.play().catch(e=>console.warn('preview play error:',e));
+    // Force video to show live feed
+    setTimeout(()=>{
+      if(prev.paused) prev.play().catch(e=>{});
+      console.log('Preview readyState:', prev.readyState, 'videoWidth:', prev.videoWidth);
+    }, 500);
+  }
   document.getElementById('intro-start-btn').style.display='none';
   document.getElementById('intro-stop-btn').style.display='inline-block';
   document.getElementById('intro-rec-badge').style.display='block';
