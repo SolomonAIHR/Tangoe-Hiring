@@ -534,64 +534,70 @@ let _camOffSeconds = 0;
 
 function startSimpleCamCheck(){
   if(_camCheckInterval) return;
+  console.log('Camera monitor started');
+
   _camCheckInterval = setInterval(()=>{
-    // Only run during step 3 (video intro) or step 4 (interview)
-    const s3 = document.getElementById('s3');
-    const s4 = document.getElementById('s4');
-    const active = (s3?.style.display !== 'none') || (s4?.style.display !== 'none');
-    if(!active){ _camOffSeconds = 0; return; }
-    if(!stream){ _camOffSeconds++; }
-    else{
+    // Check if we are in an active proctored step
+    // currentStep is set by setStep()
+    if(typeof currentStep === 'undefined' || currentStep < 3) return;
+
+    let camBad = false;
+    let reason = '';
+
+    // Check 1: stream gone
+    if(!stream){ camBad = true; reason = 'No stream'; }
+    else {
       const tracks = stream.getVideoTracks();
-      const trackOff = !tracks.length || tracks[0].readyState === 'ended' || !tracks[0].enabled;
-      if(trackOff){ _camOffSeconds++; }
-      else{
-        // Try pixel brightness check
+      // Check 2: track ended or disabled
+      if(!tracks.length){ camBad = true; reason = 'No tracks'; }
+      else if(tracks[0].readyState === 'ended'){ camBad = true; reason = 'Track ended'; }
+      else if(!tracks[0].enabled){ camBad = true; reason = 'Track disabled'; }
+      else {
+        // Check 3: black frame
         try{
           const v = document.getElementById('intro-preview') ||
                     document.getElementById('cam-video2') ||
                     document.getElementById('cam-video');
-          if(v && v.readyState >= 2 && v.videoWidth > 0){
+          if(v && v.videoWidth > 0 && !v.paused){
             const c = document.createElement('canvas');
             c.width = 32; c.height = 32;
             const ctx = c.getContext('2d');
-            ctx.drawImage(v,0,0,32,32);
-            const d = ctx.getImageData(0,0,32,32).data;
+            ctx.drawImage(v, 0, 0, 32, 32);
+            const d = ctx.getImageData(0, 0, 32, 32).data;
             let b = 0;
-            for(let i=0;i<d.length;i+=4) b+=(d[i]+d[i+1]+d[i+2])/3;
-            const avg = b/(d.length/4);
-            if(avg < 10){ _camOffSeconds++; }
-            else { _camOffSeconds = 0; }
-          } else { _camOffSeconds = 0; }
-        }catch(e){ _camOffSeconds = 0; }
+            for(let i=0; i<d.length; i+=4) b += (d[i]+d[i+1]+d[i+2])/3;
+            const avg = Math.round(b/(d.length/4));
+            if(avg < 10){ camBad = true; reason = 'Black frame ('+avg+')'; }
+          }
+        }catch(e){}
       }
     }
 
-    if(_camOffSeconds > 0){
+    if(camBad){
+      _camOffSeconds++;
+      console.warn('Camera bad:', reason, '| seconds:', _camOffSeconds);
       const remaining = Math.max(0, 30 - _camOffSeconds);
-      const msg = `🚨 <strong>Camera issue detected!</strong> Please check your camera. Interview terminates in ${remaining}s`;
-      // Show on current step
+      const msg = `🚨 <strong>Camera issue: ${reason}</strong> — Please fix your camera now. Terminates in ${remaining}s`;
       const introWarn = document.getElementById('intro-cam-warning');
-      const s3vis = s3?.style.display !== 'none';
-      if(s3vis && introWarn){ introWarn.style.display='block'; introWarn.innerHTML=msg; }
-      else { showFaceWarning(msg); }
-      // Update countdown
-      const cd = document.getElementById('face-countdown');
-      if(cd) cd.textContent = remaining;
+      if(currentStep === 3 && introWarn){
+        introWarn.style.display = 'block';
+        introWarn.innerHTML = msg;
+      } else {
+        showFaceWarning(msg);
+      }
+      if(_camOffSeconds >= 30){
+        clearInterval(_camCheckInterval);
+        _camCheckInterval = null;
+        autoCloseInterview();
+      }
     } else {
-      // Camera OK — hide warnings
+      if(_camOffSeconds > 0) console.log('Camera restored');
+      _camOffSeconds = 0;
       const introWarn = document.getElementById('intro-cam-warning');
-      if(introWarn && introWarn.style.display !== 'none' && introWarn.innerHTML.includes('Camera issue')){
-        introWarn.style.display='none';
+      if(introWarn && introWarn.innerHTML.includes('Camera issue')){
+        introWarn.style.display = 'none';
       }
       hideFaceWarning();
-    }
-
-    if(_camOffSeconds >= 30){
-      clearInterval(_camCheckInterval);
-      _camCheckInterval = null;
-      tabSwitchCount += 5;
-      autoCloseInterview();
     }
   }, 1000);
 }
@@ -950,7 +956,9 @@ async function autoCloseInterview(){
     </div>`;
 }
 
+let currentStep = 1;
 function setStep(n){
+  currentStep = n;
   [1,2,3,4,5].forEach(i=>{
     const si=document.getElementById('si-'+i);
     const sd=document.getElementById('sd-'+i);
