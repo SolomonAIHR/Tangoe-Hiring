@@ -648,9 +648,42 @@ function attachCameraEndListener(){
   stream.getVideoTracks().forEach(track => {
     track.addEventListener('ended', ()=>{
       tabSwitchCount++;
-      showCameraWarning('⚠️ <strong>Camera was turned off</strong> — Please re-enable your camera. This has been flagged in your proctoring report.');
+      // Show warning on intro step
+      const introWarn = document.getElementById('intro-cam-warning');
+      const s3 = document.getElementById('s3');
+      const s4 = document.getElementById('s4');
+      const isIntro = s3 && s3.style.display !== 'none';
+      const isInterview = s4 && s4.style.display !== 'none';
+
+      if(isIntro && introWarn){
+        introWarn.style.display='block';
+        introWarn.innerHTML='🚨 <strong>Camera turned off!</strong> Please re-enable your camera. Interview will terminate in <span id="face-countdown">30</span>s';
+        // Start countdown
+        startNoFaceCountdown();
+      } else if(isInterview){
+        showFaceWarning('🚨 <strong>Camera turned off!</strong> Please re-enable your camera. Interview will terminate in <span id="face-countdown">30</span>s');
+        startNoFaceCountdown();
+      } else {
+        showCameraWarning('⚠️ <strong>Camera was turned off</strong> — Please re-enable your camera. This has been flagged.');
+      }
     });
   });
+
+  // Also poll for stream ending (some browsers don't fire 'ended' event)
+  setInterval(()=>{
+    if(!stream) return;
+    const tracks = stream.getVideoTracks();
+    if(tracks.length && tracks[0].readyState === 'ended'){
+      const s3 = document.getElementById('s3');
+      const s4 = document.getElementById('s4');
+      const isActive = (s3 && s3.style.display !== 'none') || (s4 && s4.style.display !== 'none');
+      if(isActive && !noFaceTimer){
+        tabSwitchCount++;
+        showFaceWarning('🚨 <strong>Camera disconnected!</strong> Please reconnect your camera. Interview will terminate in <span id="face-countdown">30</span>s');
+        startNoFaceCountdown();
+      }
+    }
+  }, 3000);
 }
 
 // ── FULLSCREEN ENFORCEMENT ────────────────────────────────────────────────
@@ -696,8 +729,8 @@ const NO_FACE_LIMIT = 30; // seconds before auto-terminate
 
 async function loadFaceModels(){
   const modelUrls = [
-    'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights',
-    'https://rawgit.com/justadudewhohacks/face-api.js/master/weights'
+    'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights',
+    'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model'
   ];
   for(const url of modelUrls){
     try{

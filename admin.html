@@ -564,6 +564,7 @@ function saveJD(){
   localStorage.removeItem('active_jd');
   // Save fresh
   localStorage.setItem('active_jd', JSON.stringify({role, req, text, savedAt: new Date().toISOString()}));
+  console.log('JD saved to localStorage:', {role, req, textLength: text.length});
   console.log('JD saved:', {role, textLength: text.length});
   goStep(2);
 }
@@ -572,12 +573,13 @@ async function generateLink(){
   // Always read from localStorage (set by saveJD) BUT verify it matches current form
   const jd = JSON.parse(localStorage.getItem('active_jd')||'{}');
   
-  // Safety: re-read role from form if available
-  const currentRole = document.getElementById('jd-role')?.value?.trim() || jd.role;
+  // Read role from dropdown or custom input
+  const currentRole = (typeof getFinalRole === 'function' ? getFinalRole() : '') ||
+    document.getElementById('jd-role')?.value?.trim() || jd.role || '';
   const currentJD = document.getElementById('jd-text')?.value?.trim() || jd.text;
 
   const config = {
-    role: currentRole || jd.role,
+    role: currentRole || jd.role || '',
     req: document.getElementById('jd-req')?.value?.trim() || jd.req || '',
     jd: currentJD || jd.text,
     questions: document.getElementById('cfg-questions').value,
