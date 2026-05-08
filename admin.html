@@ -164,7 +164,8 @@ textarea{resize:vertical}
       <div class="fl"><label>Paste Job Description</label><textarea id="jd-text" rows="12" placeholder="Paste the full job description here..." oninput="autoDetectRole(this.value)"></textarea></div>
       <div style="display:flex;gap:10px;margin-top:4px">
         <button class="btn btn-primary" onclick="saveJD()">Save JD & Continue →</button>
-        <button class="btn btn-out" onclick="loadSampleJD()">Load sample QA JD</button>
+        <button class="btn btn-out" onclick="loadSampleJD('qa')" style="font-size:12px">Sample QA JD</button>
+        <button class="btn btn-out" onclick="loadSampleJD('java')" style="font-size:12px">Sample Java JD</button>
       </div>
     </div>
   </div>
@@ -324,11 +325,43 @@ textarea{resize:vertical}
 // ✅ FIXED: No more /Tangoe-Hiring in URL
 const SITE_URL = window.location.origin;
 
-function loadSampleJD(){
-  // Keep role as is when loading sample — user should set their own role
-  if(!document.getElementById('jd-role').value){
-    document.getElementById('jd-role').value = 'QA Engineer';
+function loadSampleJD(type='qa'){
+  if(type === 'java'){
+    document.getElementById('jd-role').value = 'Java Developer';
+    document.getElementById('jd-text').value = `Java Developer — Tangoe
+
+About Tangoe:
+Tangoe is a leading provider of technology expense management solutions helping enterprises manage technology assets globally.
+
+Role Overview:
+We are looking for an experienced Java Developer to join our engineering team. You will build and maintain scalable backend services for our SaaS platform.
+
+Key Responsibilities:
+- Design and develop RESTful APIs using Java, Spring Boot, and Microservices architecture
+- Work with relational databases (MySQL, PostgreSQL) and NoSQL (MongoDB, Redis)
+- Write clean, testable code following SOLID principles and design patterns
+- Participate in code reviews and Agile ceremonies (Scrum/Kanban)
+- Collaborate with frontend teams on API design and integration
+- Optimize application performance and troubleshoot production issues
+- Work with CI/CD pipelines using Jenkins, GitHub Actions, Docker, Kubernetes
+
+Required Skills:
+- 3-6 years of Java development experience
+- Strong knowledge of Spring Boot, Spring MVC, Spring Security, Hibernate/JPA
+- Experience with Microservices, REST APIs, and message queues (Kafka/RabbitMQ)
+- Proficiency in SQL and understanding of NoSQL databases
+- Experience with Docker, Kubernetes, and cloud platforms (AWS/Azure/GCP)
+- Good understanding of data structures, algorithms, and design patterns
+- Experience with unit testing using JUnit, Mockito
+
+Nice to Have:
+- Experience with reactive programming (Spring WebFlux)
+- Knowledge of GraphQL
+- Prior SaaS or product company experience`;
+    return;
   }
+  // Default QA sample
+  document.getElementById('jd-role').value = 'QA Engineer';
   document.getElementById('jd-text').value = `QA Engineer — Tangoe
 
 About Tangoe:
