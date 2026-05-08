@@ -419,20 +419,35 @@ function autoDetectRole(text){
 function saveJD(){
   const role = document.getElementById('jd-role').value.trim();
   const text = document.getElementById('jd-text').value.trim();
-  if(!role || text.length < 50){
-    alert('Please enter a role title and paste a job description (at least 50 characters).');
+  if(!role){
+    alert('Please enter a role title (e.g. Java Developer, QA Engineer).');
+    document.getElementById('jd-role').focus();
     return;
   }
+  if(text.length < 50){
+    alert('Please paste a job description (at least 50 characters).');
+    document.getElementById('jd-text').focus();
+    return;
+  }
+  // Clear any old JD from localStorage first
+  localStorage.removeItem('active_jd');
+  // Save fresh
   localStorage.setItem('active_jd', JSON.stringify({role, text, savedAt: new Date().toISOString()}));
+  console.log('JD saved:', {role, textLength: text.length});
   goStep(2);
 }
 
 async function generateLink(){
+  // Always read from localStorage (set by saveJD) BUT verify it matches current form
   const jd = JSON.parse(localStorage.getItem('active_jd')||'{}');
+  
+  // Safety: re-read role from form if available
+  const currentRole = document.getElementById('jd-role')?.value?.trim() || jd.role;
+  const currentJD = document.getElementById('jd-text')?.value?.trim() || jd.text;
 
   const config = {
-    role: jd.role,
-    jd: jd.text,
+    role: currentRole || jd.role,
+    jd: currentJD || jd.text,
     questions: document.getElementById('cfg-questions').value,
     focus: document.getElementById('cfg-focus').value,
     level: document.getElementById('cfg-level').value,
