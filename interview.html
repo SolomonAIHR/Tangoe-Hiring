@@ -553,21 +553,28 @@ function startSimpleCamCheck(){
       else {
         // Black frame = face not visible
         try{
-          const v = document.getElementById('intro-preview') ||
-                    document.getElementById('cam-video2') ||
-                    document.getElementById('cam-video');
-          if(v && v.videoWidth > 0){
+          // Try ALL video elements
+          const videos = ['intro-preview','cam-video2','cam-video']
+            .map(id => document.getElementById(id))
+            .filter(v => v && v.srcObject);
+          
+          let checked = false;
+          for(const v of videos){
             const c = document.createElement('canvas');
-            c.width = 32; c.height = 32;
+            c.width = 64; c.height = 64;
             const ctx = c.getContext('2d');
-            ctx.drawImage(v, 0, 0, 32, 32);
-            const d = ctx.getImageData(0, 0, 32, 32).data;
+            ctx.drawImage(v, 0, 0, 64, 64);
+            const d = ctx.getImageData(0, 0, 64, 64).data;
             let b = 0;
             for(let i=0; i<d.length; i+=4) b += (d[i]+d[i+1]+d[i+2])/3;
             const avg = Math.round(b/(d.length/4));
-            if(avg < 10){ camBad = true; reason = 'Face not visible'; }
+            console.log('Brightness check ['+v.id+']:', avg);
+            if(avg < 15){ camBad = true; reason = 'Face not visible (dark screen)'; }
+            checked = true;
+            break;
           }
-        }catch(e){}
+          if(!checked) console.warn('No video element found with srcObject');
+        }catch(e){ console.warn('Brightness check error:', e); }
       }
     }
 
