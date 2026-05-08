@@ -473,17 +473,20 @@ let TOTAL_Q = 6, ROLE = 'QA Engineer', JD = '', PHOTO_INTERVAL = 60000;
   console.log('Config loaded:', {role: config.role, ROLE, hasJD: !!JD, jdLength: JD.length, configKeys: Object.keys(config)});
   // Update all title elements after config is loaded
   const titleEls = document.querySelectorAll('#s1-title, #int-label, [data-role-title]');
-  // Force title update — use setTimeout to ensure DOM is rendered
+  // Force title update with multiple retries
   const updateTitles = () => {
     const t1 = document.getElementById('s1-title');
     const t2 = document.getElementById('int-label');
-    if(t1) t1.textContent = ROLE + ' · Tangoe';
-    if(t2) t2.textContent = ROLE + ' Interview · Tangoe';
-    document.title = ROLE + ' · Tangoe Interview';
-    console.log('Titles updated to:', ROLE);
+    const roleText = ROLE && ROLE !== 'Screening Interview' ? ROLE : config.role || ROLE;
+    if(t1) t1.textContent = roleText + ' · Tangoe';
+    if(t2) t2.textContent = roleText + ' Interview · Tangoe';
+    document.title = roleText + ' · Tangoe Interview';
+    console.log('Titles updated to:', roleText, '| config.role:', config.role);
   };
   updateTitles();
-  setTimeout(updateTitles, 500); // retry after 500ms
+  setTimeout(updateTitles, 300);
+  setTimeout(updateTitles, 800);
+  setTimeout(updateTitles, 1500);
 
   // ✅ Check device eligibility on page load (before any form shown)
   const shortId = urlParams.get('id');
@@ -623,6 +626,27 @@ async function startFaceDetection(){
     try{
       const videoEl = document.getElementById('cam-video2') || document.getElementById('cam-video');
       if(!videoEl || !videoEl.srcObject) return;
+
+      // ✅ BLACK FRAME DETECTION — detect shutter/covered camera
+      try{
+        const canvas = document.createElement('canvas');
+        canvas.width = 64; canvas.height = 64;
+        const ctx2d = canvas.getContext('2d');
+        ctx2d.drawImage(videoEl, 0, 0, 64, 64);
+        const pixels = ctx2d.getImageData(0, 0, 64, 64).data;
+        let totalBrightness = 0;
+        for(let i=0; i<pixels.length; i+=4){
+          totalBrightness += (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
+        }
+        const avgBrightness = totalBrightness / (pixels.length/4);
+        if(avgBrightness < 15){ // Very dark = shutter closed or covered
+          tabSwitchCount++;
+          showFaceWarning('🚨 <strong>Camera appears to be covered or blocked!</strong> Please uncover your camera immediately. Interview will terminate in <span id="face-countdown">30</span>s');
+          startNoFaceCountdown();
+          return;
+        }
+      }catch(e2){}
+
       const detections = await faceapi.detectAllFaces(
         videoEl, new faceapi.TinyFaceDetectorOptions({inputSize:224, scoreThreshold:0.4})
       );
