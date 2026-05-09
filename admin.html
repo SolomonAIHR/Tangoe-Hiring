@@ -326,11 +326,11 @@ textarea{resize:vertical}
         </div>
         <div class="fl"><label>Max uses per link</label>
           <select id="cfg-maxuses">
-            <option value="1" selected>1 use — single candidate only</option>
+            <option value="1">1 use — single candidate only</option>
             <option value="5">5 uses — small batch</option>
             <option value="25">25 uses — bulk screening</option>
             <option value="100">100 uses — open link</option>
-            <option value="999">Unlimited uses</option>
+            <option value="999" selected>Unlimited — LinkedIn/QR sharing</option>
           </select>
         </div>
         <div class="fl"><label>Link expiry</label>
@@ -917,6 +917,29 @@ function renderTemplates(){
     </div>`).join('');
 }
 
+async function deactivateLink(shortId){
+  if(!confirm('Deactivate this link? Candidates will no longer be able to use it.')) return;
+  try{
+    const r = await fetch('/api/save-jd', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({shortId, action:'deactivate'})
+    });
+    alert('✅ Link deactivated.');
+    renderSaved();
+  }catch(e){ alert('Error: '+e.message); }
+}
+
+async function reactivateLink(shortId){
+  try{
+    const r = await fetch('/api/save-jd', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({shortId, action:'reactivate'})
+    });
+    alert('✅ Link reactivated.');
+    renderSaved();
+  }catch(e){ alert('Error: '+e.message); }
+}
+
 function renderSaved(){
   const configs = JSON.parse(localStorage.getItem('interview_configs')||'[]');
   const section = document.getElementById('saved-section');
@@ -937,14 +960,19 @@ function renderSaved(){
       }))));
       url = `${SITE_URL}/interview.html?cfg64=${encodeURIComponent(payload)}`;
     }
-    return `<div class="jd-row">
+    const isActive = c.active !== false;
+    return `<div class="jd-row" style="opacity:${isActive?1:0.5}">
       <div>
-        <div class="jd-name">${c.role} <span class="tag">${c.level}</span></div>
-        <div class="jd-meta">Created ${d} · ${candidates} candidate${candidates!==1?'s':''} · ${c.questions} questions</div>
+        <div class="jd-name">${c.role} <span class="tag">${c.level}</span> ${c.req?`<span style="font-size:10px;background:#f0f4ff;color:#0057ff;border:1px solid #c7d7ff;padding:1px 6px;border-radius:4px">${c.req}</span>`:''} ${!isActive?'<span style="font-size:10px;background:#fef2f2;color:#dc2626;padding:1px 6px;border-radius:4px;border:1px solid #fca5a5">DEACTIVATED</span>':''}</div>
+        <div class="jd-meta">Created ${d} · ${candidates} candidate${candidates!==1?'s':''} · ${c.questions} questions · 48hr grace period</div>
       </div>
       <div class="jd-actions">
         <button class="copy-btn" onclick="navigator.clipboard.writeText('${url.replace(/'/g,"\\'")}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',2000)">Copy link</button>
         <a href="${url}" target="_blank" class="copy-btn" style="text-decoration:none">Open →</a>
+        ${c.shortId ? (isActive
+          ? `<button class="copy-btn" onclick="deactivateLink('${c.shortId}')" style="color:#dc2626;border-color:#fca5a5">Deactivate</button>`
+          : `<button class="copy-btn" onclick="reactivateLink('${c.shortId}')" style="color:#16a34a;border-color:#86efac">Reactivate</button>`)
+          : ''}
       </div>
     </div>`;
   }).join('');

@@ -364,6 +364,10 @@ async function loadConfig(){
         document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f6fb;font-family:sans-serif;"><div style="text-align:center;padding:40px;max-width:420px"><div style="font-size:48px;margin-bottom:16px">⏰</div><div style="font-size:22px;font-weight:700;color:#0f1117;margin-bottom:8px">Link Expired</div><div style="font-size:15px;color:#6b7280;line-height:1.6">This interview link has expired or is no longer valid.<br/><br/>Please contact the Tangoe HR team to request a new link.</div><div style="margin-top:24px;font-size:13px;color:#9ca3af;">Tangoe AI Hiring System</div></div></div>';
         return;
       }
+      if(r.status === 403){
+        document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f6fb;font-family:sans-serif;"><div style="text-align:center;padding:40px;max-width:420px"><div style="font-size:48px;margin-bottom:16px">🔒</div><div style="font-size:22px;font-weight:700;color:#0f1117;margin-bottom:8px">Link Deactivated</div><div style="font-size:15px;color:#6b7280;line-height:1.6">This interview link has been deactivated by the recruiter.<br/><br/>Please contact <strong style="color:#0057ff">taindia@tangoe.com</strong> for more information.</div><div style="margin-top:24px;font-size:13px;color:#9ca3af;">Tangoe AI Hiring System</div></div></div>';
+        return;
+      }
       if(r.ok){ config = await r.json(); return; }
     }catch(e){ console.warn('get-jd error',e); }
   }
@@ -520,6 +524,13 @@ let TOTAL_Q = 6, ROLE = 'QA Engineer', JD = '', PHOTO_INTERVAL = 60000;
     if(!check.eligible){
       showBlockedPage(check.message || 'This interview link is no longer available.', check.reason);
       return;
+    }
+    // Show grace period message if returning candidate
+    if(check.graceMode && check.hoursLeft){
+      const graceMsg = document.createElement('div');
+      graceMsg.style.cssText = 'background:#fff8eb;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;font-size:13px;color:#92400e;margin-bottom:16px;text-align:center';
+      graceMsg.innerHTML = `⏱ <strong>Welcome back!</strong> You have <strong>${check.hoursLeft} hours</strong> remaining to complete this interview.`;
+      document.querySelector('.wrap')?.prepend(graceMsg);
     }
   }
 })();
@@ -1081,6 +1092,14 @@ async function goCamera(){
       return;
     }
     if(eligBtn){ eligBtn.disabled=false; eligBtn.textContent='Continue to camera check →'; }
+    // ✅ Record first open with email (starts grace period)
+    try{
+      await fetch('/api/check-eligibility', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({linkId: shortId2, email, fingerprint: DEVICE_FINGERPRINT, action: 'record_open'})
+      });
+    }catch(e){}
   }
 
   // ✅ GPS LOCATION CAPTURE
@@ -1148,6 +1167,17 @@ async function goCamera(){
   };
 
   setStep(2);
+  // ✅ Mark interview as STARTED — locks this email to this link
+  const shortId3 = urlParams.get('id');
+  if(shortId3 && cur.email){
+    try{
+      await fetch('/api/check-eligibility', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({linkId: shortId3, email: cur.email, fingerprint: DEVICE_FINGERPRINT, action: 'mark_started'})
+      });
+    }catch(e){}
+  }
   // ✅ If stream already active (came back from edit), show camera ready immediately
   setTimeout(()=>{
     if(stream && stream.getTracks().some(t=>t.readyState==='live')){
