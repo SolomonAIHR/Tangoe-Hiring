@@ -472,7 +472,11 @@ function showBlockedPage(message, reason){
 }
 
 // Config-derived constants (read lazily from config object)
-function getTOTAL_Q(){ return parseInt(config.questions)||6; }
+function getTOTAL_Q(){ 
+  const q = parseInt(config.questions);
+  console.log('getTOTAL_Q:', q, 'config.questions:', config.questions);
+  return (q && q > 0) ? q : 6; 
+}
 function getROLE(){ 
   if(config.role && config.role.trim()) return config.role.trim();
   // Try to extract from first line of JD
@@ -627,7 +631,7 @@ function startSimpleCamCheck(){
           const stopBtn = document.getElementById('intro-stop-btn');
           if(stopBtn) stopBtn.innerHTML = '⏸ Recording paused — show face to resume';
         }
-        tabSwitchCount++;
+        // Flag camera issue but don't increment tabSwitchCount for camera
         if(_camOffSeconds >= GRACE){
           clearInterval(_camCheckInterval);
           _camCheckInterval = null;
@@ -644,7 +648,6 @@ function startSimpleCamCheck(){
         if(btn){ btn.disabled = true; btn.textContent = '⚠️ Camera required'; }
 
         showFaceWarning(`🚨 <strong>Camera screen is black — face not visible!</strong> Please look at your camera now.${remaining > 0 ? ` Interview terminates in <strong style="font-size:18px">${remaining}s</strong>` : ' Terminating now...'}`);
-        tabSwitchCount++;
         if(_camOffSeconds >= GRACE){
           clearInterval(_camCheckInterval);
           _camCheckInterval = null;
@@ -1311,10 +1314,14 @@ async function sendAns(){
   if(content.aiScore>=4) flags.push(`AI phrasing score: ${content.aiScore}/10`);
   if(tabSwitchCount>0) flags.push(`tab switches: ${tabSwitchCount}`);
 
-  if(flags.length){
+  // Only show flag banner for significant flags (not just short answers)
+  const significantFlags = flags.filter(f => 
+    f.includes('pasted') || f.includes('tab switches') || f.includes('AI phrasing score: [89]') || f.includes('10')
+  );
+  if(significantFlags.length){
     const b=document.getElementById('cheat-banner');
     b.style.display='flex';
-    b.innerHTML=`⚠️ <strong>Authenticity flag:</strong> ${flags.join(' · ')} — follow-up questions will probe deeper.`;
+    b.innerHTML=`⚠️ <strong>Authenticity flag:</strong> ${significantFlags.join(' · ')} — follow-up questions will probe deeper.`;
   }
 
   inp.value='';
@@ -1569,7 +1576,7 @@ function getTypingSignals(text){
   return{
     words,wpm,pasteRatio:Math.round(pasteRatio*100),
     likelyPasted:pasteDetected||pasteRatio>0.7||(words>30&&totalKeystrokes<15),
-    suspiciouslyFast:wpm>180&&words>15,totalKeystrokes
+    suspiciouslyFast:wpm>180&&words>20,totalKeystrokes
   };
 }
 function analyzeContent(text){
@@ -2261,6 +2268,9 @@ async function proceedToInterview(){
     if(cs)cs.style.display='block';
     startPhotoCapture();
   }
+  // Re-read TOTAL_Q from config at interview start to ensure correct count
+  TOTAL_Q = getTOTAL_Q();
+  console.log('Interview starting with TOTAL_Q:', TOTAL_Q, 'config.questions:', config.questions);
   const dots=document.getElementById('q-dots');
   if(dots)dots.innerHTML=Array(TOTAL_Q).fill('<div class="q-dot"></div>').join('');
   initTypingTracker();
