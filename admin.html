@@ -333,6 +333,16 @@ textarea{resize:vertical}
             <option value="999">Unlimited uses</option>
           </select>
         </div>
+        <div class="fl"><label>Link expiry</label>
+          <select id="cfg-expiry">
+            <option value="3">3 days</option>
+            <option value="7">7 days</option>
+            <option value="14">14 days</option>
+            <option value="30" selected>30 days</option>
+            <option value="60">60 days</option>
+            <option value="0">Never expires</option>
+          </select>
+        </div>
       </div>
 
       <div class="card full">
@@ -419,6 +429,15 @@ textarea{resize:vertical}
 
   <!-- SAVED JDs -->
   <div class="saved-jds" id="saved-section" style="display:none">
+    <!-- INTERVIEW TEMPLATES -->
+    <div style="margin-bottom:24px;padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">📁 Saved JD Templates</div>
+        <button onclick="saveAsTemplate()" style="font-size:11px;background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 12px;cursor:pointer;color:var(--muted)">+ Save current JD</button>
+      </div>
+      <div id="templates-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div id="no-templates" style="font-size:12px;color:var(--muted);text-align:center;padding:8px">No templates saved yet.</div>
+    </div>
     <div class="saved-title">Active interview links</div>
     <div id="saved-list"></div>
   </div>
@@ -606,6 +625,8 @@ async function generateLink(){
     photoInterval: document.getElementById('cfg-photo').value,
     expiry: document.getElementById('cfg-expiry').value,
     maxUses: document.getElementById('cfg-maxuses').value,
+    expiryDays: parseInt(document.getElementById('cfg-expiry')?.value||'30'),
+    expiresAt: (()=>{ const d=parseInt(document.getElementById('cfg-expiry')?.value||'30'); return d>0 ? new Date(Date.now()+d*86400000).toISOString() : null; })(),
     email: document.getElementById('cfg-email').value,
     cc: document.getElementById('cfg-cc').value,
     createdAt: new Date().toISOString(),
@@ -662,6 +683,7 @@ async function generateLink(){
   document.getElementById('test-link').href = url;
   goStep(3);
   renderSaved();
+renderTemplates();
   // Auto-generate QR — only works well with short URLs
   setTimeout(()=>{
     const qrDiv = document.getElementById('qr-code');
@@ -825,6 +847,74 @@ function downloadQR(){
   a.download = 'Tangoe_Interview_QR_' + (jd2.role||'Interview').replace(/\s+/g,'_') + '.png';
   a.href = dataUrl;
   a.click();
+}
+
+// ── INTERVIEW TEMPLATES ──────────────────────────────────────────────────
+function saveAsTemplate(){
+  const jdText = document.getElementById('jd-text')?.value?.trim();
+  const role = getFinalRole();
+  if(!jdText || !role){
+    alert('Please load or enter a JD first before saving as template.');
+    return;
+  }
+  const name = prompt('Enter a name for this template:', role);
+  if(!name) return;
+  const templates = JSON.parse(localStorage.getItem('jd_templates')||'[]');
+  templates.unshift({
+    id: Date.now(),
+    name,
+    role,
+    text: jdText,
+    savedAt: new Date().toLocaleDateString('en-IN')
+  });
+  localStorage.setItem('jd_templates', JSON.stringify(templates.slice(0,20)));
+  renderTemplates();
+  alert(`✅ Template "${name}" saved!`);
+}
+
+function loadTemplate(id){
+  const templates = JSON.parse(localStorage.getItem('jd_templates')||'[]');
+  const t = templates.find(t=>t.id===id);
+  if(!t) return;
+  // Set role in dropdown
+  const sel = document.getElementById('jd-role-select');
+  if(sel){
+    const opt = Array.from(sel.options).find(o=>o.value===t.role);
+    if(opt){ sel.value=t.role; document.getElementById('custom-role-wrap').style.display='none'; }
+    else{ sel.value='__custom__'; document.getElementById('custom-role-wrap').style.display='block';
+      const ri=document.getElementById('jd-role'); if(ri) ri.value=t.role; }
+  }
+  document.getElementById('jd-text').value = t.text;
+  goStep(1);
+  alert(`✅ Template "${t.name}" loaded!`);
+}
+
+function deleteTemplate(id){
+  if(!confirm('Delete this template?')) return;
+  let templates = JSON.parse(localStorage.getItem('jd_templates')||'[]');
+  templates = templates.filter(t=>t.id!==id);
+  localStorage.setItem('jd_templates', JSON.stringify(templates));
+  renderTemplates();
+}
+
+function renderTemplates(){
+  const templates = JSON.parse(localStorage.getItem('jd_templates')||'[]');
+  const list = document.getElementById('templates-list');
+  const none = document.getElementById('no-templates');
+  if(!list) return;
+  if(!templates.length){ if(none) none.style.display='block'; list.innerHTML=''; return; }
+  if(none) none.style.display='none';
+  list.innerHTML = templates.map(t=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px">
+      <div>
+        <div style="font-size:13px;font-weight:500;color:var(--text)">${t.name}</div>
+        <div style="font-size:11px;color:var(--muted)">${t.role} · Saved ${t.savedAt}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="loadTemplate(${t.id})" style="font-size:12px;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer">Load</button>
+        <button onclick="deleteTemplate(${t.id})" style="font-size:12px;background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;cursor:pointer">🗑</button>
+      </div>
+    </div>`).join('');
 }
 
 function renderSaved(){

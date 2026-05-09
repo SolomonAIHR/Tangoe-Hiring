@@ -201,8 +201,12 @@ input:focus,select:focus{border-color:var(--accent);background:#fff}
       </div>
 
       <div class="fl"><label>Upload resume * (PDF or Word)</label>
-        <input type="file" id="c-resume" accept=".pdf,.doc,.docx" style="background:var(--bg);padding:8px"/>
+        <input type="file" id="c-resume" accept=".pdf,.doc,.docx"
+          style="background:var(--bg);padding:8px"
+          onchange="validateResumeFile(this)"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">Accepted formats: PDF (.pdf) or Word (.doc, .docx) only</div>
         <div id="resume-err" style="color:#dc2626;font-size:12px;margin-top:4px;display:none">Please upload your resume</div>
+        <div id="resume-type-err" style="color:#dc2626;font-size:12px;margin-top:4px;display:none">❌ Invalid file type. Only PDF or Word documents (.pdf, .doc, .docx) are accepted.</div>
       </div>
 
       <ul class="rules-list" style="margin-bottom:20px;margin-top:8px">
@@ -500,7 +504,7 @@ let TOTAL_Q = 6, ROLE = 'QA Engineer', JD = '', PHOTO_INTERVAL = 60000;
     const roleText = ROLE && ROLE !== 'Screening Interview' ? ROLE : config.role || ROLE;
     const reqText = config.req ? ` [${config.req}]` : '';
     if(t1) t1.textContent = roleText + reqText + ' · Tangoe';
-    if(t2) t2.textContent = roleText + ' Interview · Tangoe';
+    if(t2) t2.textContent = roleText + ' · Tangoe';
     document.title = roleText + ' · Tangoe Interview';
     console.log('Titles updated to:', roleText, '| config.role:', config.role);
   };
@@ -1260,7 +1264,8 @@ Line 1: DONE
 Line 2: valid JSON (no markdown):
 {"verdict":"Strong Yes","score":8,"strengths":["X","Y"],"concerns":["Z"],"jdMatch":85,"summary":"2 sentence summary comparing candidate to JD requirements."}
 ${cheatNote}
-Verdict: Strong Yes(9-10)/Yes(7-8)/Maybe(5-6)/No(1-4). Be conversational, professional, precise.`;
+Verdict: Strong Yes(9-10)/Yes(7-8)/Maybe(5-6)/No(1-4). Be conversational, professional, precise.
+IMPORTANT: Do NOT use markdown formatting (no **bold**, no ##headings, no bullet points with *). Write in plain conversational text only.`;
 }
 
 async function sendAns(){
@@ -1496,9 +1501,21 @@ function initTypingTracker(){
   const inp=document.getElementById('ans');
   resetTypingTracker();
   inp.addEventListener('paste',(e)=>{
+    e.preventDefault(); // BLOCK paste completely
     pasteDetected=true;
     const b=document.getElementById('cheat-banner');
-    if(b){ b.style.display='flex'; b.innerHTML='⚠️ <strong>Paste detected</strong> — This answer has been flagged. Type your answers manually.'; }
+    if(b){ b.style.display='flex'; b.innerHTML='⚠️ <strong>Paste is disabled</strong> — You must type your answers manually. This attempt has been flagged.'; }
+    return false;
+  });
+  // Block Ctrl+V keyboard shortcut
+  inp.addEventListener('keydown',(e)=>{
+    if((e.ctrlKey||e.metaKey) && e.key==='v'){
+      e.preventDefault();
+      pasteDetected=true;
+      const b=document.getElementById('cheat-banner');
+      if(b){ b.style.display='flex'; b.innerHTML='⚠️ <strong>Ctrl+V is disabled</strong> — You must type your answers manually. This attempt has been flagged.'; }
+      return false;
+    }
   });
   // Block right-click on answer field
   inp.addEventListener('contextmenu',(e)=>{
@@ -1535,10 +1552,22 @@ function analyzeContent(text){
   return{aiScore,hits,pronounRatio:Math.round(pronouns/words*100)/100};
 }
 
+function stripMarkdown(text){
+  return text
+    .replace(/^DONE\s*/,'')
+    .replace(/\*\*(.+?)\*\*/g,'$1')  // **bold** → bold
+    .replace(/\*(.+?)\*/g,'$1')        // *italic* → italic
+    .replace(/#{1,6}\s+/g,'')           // ## headings
+    .replace(/^[-*]\s+/gm,'• ')         // bullet points
+    .replace(/`(.+?)`/g,'$1')           // `code`
+    .replace(/\[(.+?)\]\(.*?\)/g,'$1') // [link](url) → link
+    .trim();
+}
+
 function addBubble(t,type){
   const el=document.createElement('div');
   el.className=type===true?'msg msg-me':type==='warn'?'msg msg-warn':'msg msg-ai';
-  el.textContent=t.replace(/^DONE\s*/,'').trim();
+  el.textContent=type===true ? t : stripMarkdown(t);
   document.getElementById('chat-area').appendChild(el);
   scrollChat();
 }
@@ -1851,6 +1880,26 @@ const CITY_LISTS = {
   'Malaysia': ['Kuala Lumpur','Penang','Johor Bahru','Petaling Jaya','Subang Jaya'],
   'Other': ['Other City']
 };
+
+function validateResumeFile(input){
+  const file = input.files[0];
+  const typeErr = document.getElementById('resume-type-err');
+  const resumeErr = document.getElementById('resume-err');
+  if(!file) return;
+  const allowed = ['application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+  const ext = file.name.split('.').pop().toLowerCase();
+  const allowedExt = ['pdf','doc','docx'];
+  if(!allowed.includes(file.type) && !allowedExt.includes(ext)){
+    typeErr.style.display = 'block';
+    resumeErr.style.display = 'none';
+    input.value = ''; // clear the file
+    return;
+  }
+  typeErr.style.display = 'none';
+  resumeErr.style.display = 'none';
+}
 
 function updateCities(){
   const country = document.getElementById('c-country').value;
