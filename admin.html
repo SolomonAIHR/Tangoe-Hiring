@@ -160,16 +160,9 @@ textarea{resize:vertical}
     <div class="card">
       <div class="card-title">Job Description</div>
       <div class="card-sub">Paste the full JD — Claude will use it to generate role-specific screening questions.</div>
-      <div class="fl"><label>Role title *</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px">
-            <div>
-              <input type="text" id="jd-req" placeholder="REQ# e.g. REQ-2025-001"
-                style="font-family:monospace;letter-spacing:1px;width:100%"
-                oninput="this.value=this.value.toUpperCase()"/>
-              <div style="font-size:11px;color:var(--muted);margin-top:3px">Requisition number (optional)</div>
-            </div>
-            <div>
-              <select id="jd-role-select" onchange="handleRoleSelect(this.value)" style="width:100%">
+      <!-- ROW 1: Job Title dropdown (full width) -->
+      <div class="fl"><label>Job Title *</label>
+        <select id="jd-role-select" onchange="handleRoleSelect(this.value)" style="width:100%">
                 <option value="">-- Select standard title --</option>
                 <optgroup label="Software Engineering">
                   <option>Java Developer</option>
@@ -257,13 +250,19 @@ textarea{resize:vertical}
                 </optgroup>
                 <option value="__custom__">✏️ Enter custom title...</option>
               </select>
-            </div>
-          </div>
-          <!-- Custom title (shown when custom selected) -->
-          <div id="custom-role-wrap" style="display:none">
-            <input type="text" id="jd-role" placeholder="Enter custom job title..." style="width:100%"/>
-          </div>
+        <!-- Custom title (shown when custom selected) -->
+        <div id="custom-role-wrap" style="display:none;margin-top:8px">
+          <input type="text" id="jd-role" placeholder="Enter custom job title..." style="width:100%"/>
         </div>
+      </div>
+
+      <!-- ROW 2: REQ Number -->
+      <div class="fl"><label>REQ Number <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+        <input type="text" id="jd-req" placeholder="e.g. REQ-2025-001"
+          style="font-family:monospace;letter-spacing:1px;width:100%;max-width:300px"
+          oninput="this.value=this.value.toUpperCase()"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">Requisition number for tracking in dashboard</div>
+      </div>
       <div class="fl"><label>Paste Job Description</label><textarea id="jd-text" rows="12" placeholder="Paste the full job description here..." oninput="autoDetectRole(this.value)"></textarea></div>
       <div style="display:flex;gap:10px;margin-top:4px">
         <button class="btn btn-primary" onclick="saveJD()">Save JD & Continue →</button>
@@ -543,8 +542,11 @@ function getReqNumber(){
 
 function autoDetectRole(text){
   if(!text || text.length < 20) return;
+  // Don't override if user already selected a role from dropdown
+  const sel = document.getElementById('jd-role-select');
+  if(sel && sel.value && sel.value !== '' && sel.value !== '__custom__') return;
   const roleField = document.getElementById('jd-role');
-  if(roleField.value && roleField.value !== 'QA Engineer') return; // don't override if already set
+  if(roleField && roleField.value && roleField.value.trim()) return;
 
   // Common role patterns to detect
   const patterns = [
