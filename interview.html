@@ -475,8 +475,9 @@ function showBlockedPage(message, reason){
 // Config-derived constants (read lazily from config object)
 function getTOTAL_Q(){ 
   const q = parseInt(config.questions);
-  console.log('getTOTAL_Q:', q, 'config.questions:', config.questions);
-  return (q && q > 0) ? q : 6; 
+  const result = (q && q >= 4 && q <= 10) ? q : 6;
+  console.log('getTOTAL_Q called → config.questions:', config.questions, '→ returning:', result);
+  return result;
 }
 function getROLE(){ 
   if(config.role && config.role.trim()) return config.role.trim();
@@ -592,8 +593,16 @@ function startSimpleCamCheck(){
             let b = 0;
             for(let i=0; i<d.length; i+=4) b += (d[i]+d[i+1]+d[i+2])/3;
             const avg = Math.round(b/(d.length/4));
-            console.log('Brightness check ['+v.id+']:', avg);
-            if(avg < 40){ camBad = true; reason = `Face not visible (brightness:${avg})`; }
+            // Only flag if consistently dark (not a momentary glitch)
+            if(avg < 40){
+              window._darkFrameCount = (window._darkFrameCount||0) + 1;
+              if(window._darkFrameCount >= 3){ // 3 consecutive dark frames = real issue
+                camBad = true;
+                reason = `Face not visible (brightness:${avg})`;
+              }
+            } else {
+              window._darkFrameCount = 0; // reset on bright frame
+            }
             checked = true;
             break;
           }
@@ -942,7 +951,7 @@ async function startFaceDetection(){
           totalBrightness += (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
         }
         const avgBrightness = totalBrightness / (pixels.length/4);
-        if(avgBrightness < 40){ // Dark screen = covered or face not visible
+        if(avgBrightness < 30){ // Dark screen = covered or face not visible (raised from 40)
           tabSwitchCount++;
           showFaceWarning('🚨 <strong>Camera appears to be covered or blocked!</strong> Please uncover your camera immediately. Interview will terminate in <span id="face-countdown">30</span>s');
           startNoFaceCountdown();
@@ -1167,15 +1176,23 @@ async function goCamera(){
 
   // ✅ Extract and analyze resume vs JD in background
   if(resumeFile && (JD || config.jd)){
+    console.log('Starting resume analysis...');
     extractResumeText(resumeFile).then(async resumeText => {
-      if(resumeText){
+      if(resumeText && resumeText.length > 50){
+        console.log('Resume text extracted:', resumeText.length, 'chars');
         const analysis = await analyzeResumeVsJD(resumeText, JD||config.jd, ROLE);
         if(analysis){
           cur.resumeAnalysis = analysis;
-          console.log('Resume analysis:', analysis);
+          console.log('✅ Resume analysis complete:', analysis);
+        } else {
+          console.warn('Resume analysis returned null');
         }
+      } else {
+        console.warn('Resume text too short or empty:', resumeText?.length);
       }
     }).catch(e => console.warn('Resume analysis error:', e));
+  } else {
+    console.log('Resume analysis skipped - JD:', !!(JD||config.jd), 'File:', !!resumeFile);
   }
 
   const companyRaw = document.getElementById('c-company').value.trim();
@@ -1740,7 +1757,10 @@ function goBackToInterview(){
   // Disabled — candidates cannot go back after review step
   console.log('Back navigation disabled after review step');
 }
-function setQLabel(n){document.getElementById('q-label').textContent=n>TOTAL_Q?'Wrapping up…':`Question ${Math.min(n,TOTAL_Q)} of ${TOTAL_Q}`;}
+function setQLabel(n){
+  const label = document.getElementById('q-label');
+  if(label) label.textContent = n > TOTAL_Q ? 'Wrapping up…' : `Question ${Math.min(n,TOTAL_Q)} of ${TOTAL_Q}`;
+}
 function updateDots(n){document.querySelectorAll('.q-dot').forEach((d,i)=>d.classList.toggle('done',i<n));}
 
 // ── CLOUDINARY CONFIG ────────────────────────────────────────────────────
@@ -2383,9 +2403,11 @@ async function proceedToInterview(){
   }
   // Re-read TOTAL_Q from config at interview start to ensure correct count
   TOTAL_Q = getTOTAL_Q();
-  console.log('Interview starting with TOTAL_Q:', TOTAL_Q, 'config.questions:', config.questions);
+  console.log('🎯 Interview starting with TOTAL_Q:', TOTAL_Q, '| config.questions:', config.questions, '| typeof:', typeof config.questions);
   const dots=document.getElementById('q-dots');
   if(dots)dots.innerHTML=Array(TOTAL_Q).fill('<div class="q-dot"></div>').join('');
+  // Force update q-label
+  setQLabel(1);
   initTypingTracker();
   await new Promise(r=>setTimeout(r,400));
 
