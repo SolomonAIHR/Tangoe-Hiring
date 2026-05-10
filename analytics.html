@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tangoe · Hiring Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f2f8;--surface:#fff;--border:#e2e6f0;
+  --accent:#0057ff;--green:#16a34a;--amber:#d97706;--red:#dc2626;
+  --ink:#0f1117;--muted:#6b7280;--purple:#7c3aed;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}
+.logo{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--ink)}
+.nav-links{display:flex;gap:8px}
+.nav-links a{font-size:13px;padding:6px 14px;border-radius:7px;text-decoration:none;color:var(--muted);transition:all .15s}
+.nav-links a:hover{background:var(--bg);color:var(--ink)}
+.nav-links a.active{background:var(--accent);color:#fff}
+.wrap{max-width:1200px;margin:0 auto;padding:28px 24px}
+.page-header{margin-bottom:28px}
+.page-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;margin-bottom:4px}
+.page-sub{font-size:14px;color:var(--muted)}
+
+/* KPI Cards */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.kpi{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kpi-color,var(--accent))}
+.kpi-icon{width:40px;height:40px;border-radius:10px;background:var(--kpi-bg,#f0f4ff);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px}
+.kpi-val{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:var(--ink);line-height:1}
+.kpi-label{font-size:12px;color:var(--muted);margin-top:4px;font-weight:500}
+.kpi-change{font-size:11px;margin-top:8px;font-weight:500}
+.kpi-change.up{color:var(--green)}
+.kpi-change.down{color:var(--red)}
+
+/* Charts Grid */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.charts-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+.chart-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px}
+.chart-title{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:4px}
+.chart-sub{font-size:11px;color:var(--muted);margin-bottom:16px}
+
+/* Bar Chart */
+.bar-chart{display:flex;flex-direction:column;gap:10px}
+.bar-row{display:flex;align-items:center;gap:10px}
+.bar-label{font-size:12px;color:var(--muted);width:120px;flex-shrink:0;text-align:right}
+.bar-track{flex:1;height:28px;background:#f0f2f8;border-radius:6px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:600;color:#fff;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.bar-val{font-size:12px;color:var(--ink);font-weight:600;width:36px;text-align:right}
+
+/* Donut Chart */
+.donut-wrap{display:flex;align-items:center;gap:20px}
+.donut-svg{flex-shrink:0}
+.donut-legend{display:flex;flex-direction:column;gap:8px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12px}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.legend-label{color:var(--muted)}
+.legend-val{font-weight:600;color:var(--ink);margin-left:auto}
+
+/* Funnel */
+.funnel{display:flex;flex-direction:column;gap:6px}
+.funnel-step{display:flex;align-items:center;gap:12px}
+.funnel-bar-wrap{flex:1;position:relative;height:36px}
+.funnel-bar{height:100%;border-radius:6px;display:flex;align-items:center;padding:0 12px;font-size:12px;font-weight:600;color:#fff}
+.funnel-info{text-align:right;min-width:60px}
+.funnel-num{font-size:14px;font-weight:700;color:var(--ink)}
+.funnel-pct{font-size:11px;color:var(--muted)}
+
+/* Trend Line */
+.trend-chart{position:relative;height:160px}
+.trend-svg{width:100%;height:100%}
+
+/* Position table */
+.pos-table{width:100%;border-collapse:collapse}
+.pos-table th{font-size:11px;font-weight:600;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--border)}
+.pos-table td{font-size:13px;padding:10px;border-bottom:1px solid #f0f2f8;color:var(--ink)}
+.pos-table tr:last-child td{border:none}
+.score-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600}
+
+/* Time filter */
+.time-filter{display:flex;gap:6px;margin-bottom:20px}
+.time-btn{font-size:12px;padding:5px 14px;border-radius:7px;border:1px solid var(--border);background:#fff;color:var(--muted);cursor:pointer;transition:all .15s}
+.time-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* PIN overlay */
+#pin-overlay{position:fixed;inset:0;background:#0a0d14;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.pin-card{background:#111520;border:1px solid #232840;border-radius:16px;padding:32px;width:320px;text-align:center}
+.pin-logo{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:#22c97a;margin-bottom:4px}
+.pin-sub{font-size:13px;color:#6b7394;margin-bottom:24px}
+.pin-input{width:100%;background:#1a1f2e;border:1px solid #232840;border-radius:8px;padding:11px 14px;color:#e8eaf0;font-size:16px;text-align:center;letter-spacing:4px;outline:none;font-family:'DM Sans',sans-serif}
+.pin-btn{width:100%;margin-top:12px;padding:11px;background:linear-gradient(135deg,#4f8eff,#7c5cfc);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif}
+.pin-err{color:#ef4444;font-size:12px;margin-top:8px;display:none}
+
+@media(max-width:768px){
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .charts-grid,.charts-grid-3{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div id="pin-overlay">
+  <div class="pin-card">
+    <div class="pin-logo">tangoe</div>
+    <div class="pin-sub">Hiring Analytics · Secure Access</div>
+    <input class="pin-input" type="password" id="pin-input" placeholder="Enter PIN" maxlength="20"
+      onkeydown="if(event.key==='Enter')checkPin()"/>
+    <button class="pin-btn" onclick="checkPin()">Access Analytics →</button>
+    <div class="pin-err" id="pin-err">Incorrect PIN. Please try again.</div>
+  </div>
+</div>
+
+<nav class="nav">
+  <div class="logo">tangoe</div>
+  <div class="nav-links">
+    <a href="/screening.html">+ New Link</a>
+    <a href="/dashboard.html">Candidates</a>
+    <a href="/analytics.html" class="active">Analytics</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="page-header">
+    <div class="page-title">Hiring Analytics</div>
+    <div class="page-sub">AI-powered screening insights · Real-time data</div>
+  </div>
+
+  <div class="time-filter">
+    <button class="time-btn active" onclick="setTimeFilter(7,this)">7 days</button>
+    <button class="time-btn" onclick="setTimeFilter(30,this)">30 days</button>
+    <button class="time-btn" onclick="setTimeFilter(90,this)">90 days</button>
+    <button class="time-btn" onclick="setTimeFilter(0,this)">All time</button>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi" style="--kpi-color:#0057ff;--kpi-bg:#f0f4ff">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-val" id="kpi-total">—</div>
+      <div class="kpi-label">Total Screened</div>
+      <div class="kpi-change up" id="kpi-total-change"></div>
+    </div>
+    <div class="kpi" style="--kpi-color:#16a34a;--kpi-bg:#f0fdf4">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-val" id="kpi-pass">—</div>
+      <div class="kpi-label">Strong Yes / Yes</div>
+      <div class="kpi-change up" id="kpi-pass-pct"></div>
+    </div>
+    <div class="kpi" style="--kpi-color:#d97706;--kpi-bg:#fffbeb">
+      <div class="kpi-icon">⭐</div>
+      <div class="kpi-val" id="kpi-avg">—</div>
+      <div class="kpi-label">Avg Score /10</div>
+      <div class="kpi-change" id="kpi-avg-change"></div>
+    </div>
+    <div class="kpi" style="--kpi-color:#7c3aed;--kpi-bg:#f5f3ff">
+      <div class="kpi-icon">⏱</div>
+      <div class="kpi-val" id="kpi-time">—</div>
+      <div class="kpi-label">Avg Completion</div>
+      <div class="kpi-change" id="kpi-completion-rate"></div>
+    </div>
+  </div>
+
+  <!-- Charts Row 1 -->
+  <div class="charts-grid">
+    <!-- Verdict Distribution Donut -->
+    <div class="chart-card">
+      <div class="chart-title">Verdict Distribution</div>
+      <div class="chart-sub">AI assessment outcomes</div>
+      <div class="donut-wrap">
+        <svg class="donut-svg" width="140" height="140" viewBox="0 0 140 140" id="donut-svg">
+          <circle cx="70" cy="70" r="52" fill="none" stroke="#f0f2f8" stroke-width="20"/>
+        </svg>
+        <div class="donut-legend" id="donut-legend"></div>
+      </div>
+    </div>
+
+    <!-- Score by Position Bar Chart -->
+    <div class="chart-card">
+      <div class="chart-title">Avg Score by Position</div>
+      <div class="chart-sub">Top roles by candidate performance</div>
+      <div class="bar-chart" id="score-by-position"></div>
+    </div>
+  </div>
+
+  <!-- Charts Row 2 -->
+  <div class="charts-grid">
+    <!-- Candidate Funnel -->
+    <div class="chart-card">
+      <div class="chart-title">Screening Funnel</div>
+      <div class="chart-sub">Candidate drop-off analysis</div>
+      <div class="funnel" id="funnel-chart"></div>
+    </div>
+
+    <!-- Daily trend -->
+    <div class="chart-card">
+      <div class="chart-title">Screening Activity</div>
+      <div class="chart-sub">Candidates screened over time</div>
+      <div class="trend-chart">
+        <svg class="trend-svg" id="trend-svg" viewBox="0 0 400 160" preserveAspectRatio="none"></svg>
+      </div>
+      <div id="trend-labels" style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--muted)"></div>
+    </div>
+  </div>
+
+  <!-- Charts Row 3 -->
+  <div class="charts-grid-3">
+    <!-- Flags breakdown -->
+    <div class="chart-card">
+      <div class="chart-title">Authenticity Flags</div>
+      <div class="chart-sub">Common integrity concerns</div>
+      <div class="bar-chart" id="flags-chart"></div>
+    </div>
+
+    <!-- Location distribution -->
+    <div class="chart-card">
+      <div class="chart-title">Candidate Locations</div>
+      <div class="chart-sub">Top cities applying</div>
+      <div class="bar-chart" id="location-chart"></div>
+    </div>
+
+    <!-- Experience distribution -->
+    <div class="chart-card">
+      <div class="chart-title">Experience Levels</div>
+      <div class="chart-sub">Years of experience distribution</div>
+      <div class="bar-chart" id="exp-chart"></div>
+    </div>
+  </div>
+
+  <!-- Position Performance Table -->
+  <div class="chart-card" style="margin-bottom:16px">
+    <div class="chart-title">Position Performance</div>
+    <div class="chart-sub">Screening effectiveness by role</div>
+    <table class="pos-table" style="margin-top:12px">
+      <thead>
+        <tr>
+          <th>POSITION</th>
+          <th>SCREENED</th>
+          <th>AVG SCORE</th>
+          <th>PASS RATE</th>
+          <th>AVG JD MATCH</th>
+          <th>TERMINATED</th>
+          <th>STATUS</th>
+        </tr>
+      </thead>
+      <tbody id="position-table"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const ADMIN_PIN = 'TANGOE2024HR';
+
+(function(){
+  const saved = sessionStorage.getItem('analytics_auth');
+  const override = localStorage.getItem('tangoe_pin_override');
+  if(saved === 'true') document.getElementById('pin-overlay').style.display='none';
+
+  function checkPin(){
+    const entered = document.getElementById('pin-input').value.trim();
+    const active = override || ADMIN_PIN;
+    if(entered === active || entered === ADMIN_PIN){
+      sessionStorage.setItem('analytics_auth','true');
+      document.getElementById('pin-overlay').style.display='none';
+      initAnalytics();
+    } else {
+      document.getElementById('pin-err').style.display='block';
+      document.getElementById('pin-input').value='';
+    }
+  }
+  window.checkPin = checkPin;
+  document.getElementById('pin-input').addEventListener('keydown', e => { if(e.key==='Enter') checkPin(); });
+  if(saved === 'true') setTimeout(initAnalytics, 100);
+})();
+
+let allCandidates = [];
+let filteredDays = 7;
+
+async function loadCandidates(){
+  // Load from Upstash
+  const KV_URL = 'https://promoted-wolf-89659.upstash.io';
+  try{
+    const r = await fetch('/api/get-results');
+    if(r.ok){
+      const d = await r.json();
+      return d.results || [];
+    }
+  }catch(e){}
+  // Fallback to localStorage
+  return JSON.parse(localStorage.getItem('tangoe_candidates')||'[]');
+}
+
+function setTimeFilter(days, btn){
+  filteredDays = days;
+  document.querySelectorAll('.time-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAnalytics();
+}
+
+function filterByDays(candidates){
+  if(!filteredDays) return candidates;
+  const cutoff = Date.now() - filteredDays*86400000;
+  return candidates.filter(c => new Date(c.completedAt||0).getTime() > cutoff);
+}
+
+function renderAnalytics(){
+  const candidates = filterByDays(allCandidates);
+  const n = candidates.length;
+
+  // ── KPI CARDS ─────────────────────────────────────────────────────────
+  document.getElementById('kpi-total').textContent = n;
+
+  const passed = candidates.filter(c => ['Strong Yes','Yes'].includes(c.assessment?.verdict)).length;
+  document.getElementById('kpi-pass').textContent = passed;
+  document.getElementById('kpi-pass-pct').textContent = n ? Math.round(passed/n*100)+'% pass rate' : '';
+
+  const scores = candidates.map(c=>c.assessment?.score||0).filter(s=>s>0);
+  const avgScore = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : '—';
+  document.getElementById('kpi-avg').textContent = avgScore;
+
+  // Avg completion time (in minutes, from start to completedAt)
+  const times = candidates
+    .filter(c=>c.candidate?.start && c.completedAt)
+    .map(c=>(new Date(c.completedAt)-new Date(c.candidate.start))/60000)
+    .filter(t=>t>0&&t<120);
+  const avgTime = times.length ? Math.round(times.reduce((a,b)=>a+b,0)/times.length) : 0;
+  document.getElementById('kpi-time').textContent = avgTime ? avgTime+'m' : '—';
+
+  const terminated = candidates.filter(c=>c.assessment?.verdict==='Terminated').length;
+  const completionRate = n ? Math.round((n-terminated)/n*100) : 0;
+  document.getElementById('kpi-completion-rate').textContent = completionRate ? completionRate+'% completion rate' : '';
+
+  // ── DONUT CHART ───────────────────────────────────────────────────────
+  const verdictMap = {'Strong Yes':'#16a34a','Yes':'#0057ff','Maybe':'#d97706','No':'#dc2626','Terminated':'#6b7280','Pending':'#e2e6f0'};
+  const verdictCounts = {};
+  candidates.forEach(c=>{
+    const v = c.assessment?.verdict||'Pending';
+    verdictCounts[v] = (verdictCounts[v]||0)+1;
+  });
+
+  const donutSvg = document.getElementById('donut-svg');
+  const donutLegend = document.getElementById('donut-legend');
+  const total = Object.values(verdictCounts).reduce((a,b)=>a+b,0)||1;
+  const r=52, cx=70, cy=70, circumference=2*Math.PI*r;
+
+  let offset = 0;
+  let circles = '';
+  let legendHTML = '';
+
+  Object.entries(verdictMap).forEach(([verdict, color])=>{
+    const count = verdictCounts[verdict]||0;
+    if(!count) return;
+    const pct = count/total;
+    const dash = pct*circumference;
+    const gap = circumference-dash;
+    circles += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="20"
+      stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${-offset}" transform="rotate(-90 70 70)"/>`;
+    offset += dash;
+    legendHTML += `<div class="legend-item">
+      <div class="legend-dot" style="background:${color}"></div>
+      <span class="legend-label">${verdict}</span>
+      <span class="legend-val" style="margin-left:16px">${count}</span>
+    </div>`;
+  });
+
+  donutSvg.innerHTML = `<circle cx="70" cy="70" r="52" fill="none" stroke="#f0f2f8" stroke-width="20"/>${circles}
+    <text x="70" y="70" text-anchor="middle" dy=".3em" font-size="22" font-weight="700" font-family="Syne,sans-serif" fill="#0f1117">${n}</text>
+    <text x="70" y="88" text-anchor="middle" font-size="10" fill="#6b7280">total</text>`;
+  donutLegend.innerHTML = legendHTML;
+
+  // ── SCORE BY POSITION BAR CHART ───────────────────────────────────────
+  const byPosition = {};
+  candidates.forEach(c=>{
+    const role = (c.role&&c.role!=='Screening Interview')?c.role:'Unknown';
+    if(!byPosition[role]) byPosition[role]={scores:[],count:0};
+    if(c.assessment?.score) byPosition[role].scores.push(c.assessment.score);
+    byPosition[role].count++;
+  });
+
+  const posScores = Object.entries(byPosition)
+    .map(([role,d])=>({role,avg:d.scores.length?+(d.scores.reduce((a,b)=>a+b,0)/d.scores.length).toFixed(1):0,count:d.count}))
+    .filter(p=>p.avg>0)
+    .sort((a,b)=>b.avg-a.avg)
+    .slice(0,6);
+
+  document.getElementById('score-by-position').innerHTML = posScores.length
+    ? posScores.map(p=>{
+        const col = p.avg>=7?'#16a34a':p.avg>=5?'#d97706':'#dc2626';
+        return `<div class="bar-row">
+          <div class="bar-label">${p.role.length>18?p.role.substring(0,18)+'…':p.role}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${p.avg*10}%;background:${col}">${p.avg}</div></div>
+          <div class="bar-val">${p.count}</div>
+        </div>`;
+      }).join('')
+    : '<div style="color:#9ca3af;font-size:13px;text-align:center;padding:20px">No data yet</div>';
+
+  // ── FUNNEL CHART ──────────────────────────────────────────────────────
+  const total_screened = allCandidates.length;
+  const filtered_screened = n;
+  const completed = candidates.filter(c=>c.assessment?.verdict!=='Terminated').length;
+  const shortlisted = candidates.filter(c=>c.status==='Shortlisted').length;
+
+  const funnelSteps = [
+    {label:'Links Generated', val:total_screened, color:'#0057ff'},
+    {label:'Completed Interview', val:completed, color:'#7c3aed'},
+    {label:'Passed (Yes+)', val:passed, color:'#16a34a'},
+    {label:'Shortlisted', val:shortlisted, color:'#d97706'},
+  ];
+
+  const maxFunnel = funnelSteps[0].val||1;
+  document.getElementById('funnel-chart').innerHTML = funnelSteps.map((step,i)=>{
+    const pct = Math.round(step.val/maxFunnel*100);
+    const convPct = i>0 && funnelSteps[i-1].val ? Math.round(step.val/funnelSteps[i-1].val*100) : 100;
+    return `<div class="funnel-step">
+      <div class="funnel-bar-wrap">
+        <div class="funnel-bar" style="width:${Math.max(pct,8)}%;background:${step.color};opacity:${1-i*0.1}">${step.label}</div>
+      </div>
+      <div class="funnel-info">
+        <div class="funnel-num">${step.val}</div>
+        <div class="funnel-pct">${i>0?convPct+'% conv':'100%'}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── TREND CHART ───────────────────────────────────────────────────────
+  const days = Math.max(filteredDays||30, 7);
+  const dailyCounts = {};
+  for(let i=0;i<days;i++){
+    const d = new Date(Date.now()-i*86400000);
+    const key = d.toISOString().substring(0,10);
+    dailyCounts[key] = 0;
+  }
+  candidates.forEach(c=>{
+    const key = (c.completedAt||'').substring(0,10);
+    if(dailyCounts[key]!==undefined) dailyCounts[key]++;
+  });
+
+  const dayKeys = Object.keys(dailyCounts).sort();
+  const dayVals = dayKeys.map(k=>dailyCounts[k]);
+  const maxDay = Math.max(...dayVals, 1);
+
+  const W=400, H=140, pad=10;
+  const pts = dayVals.map((v,i)=>{
+    const x = pad + (i/(dayVals.length-1||1))*(W-2*pad);
+    const y = H-pad-(v/maxDay)*(H-2*pad);
+    return `${x},${y}`;
+  });
+
+  const areaPath = `M${pts[0]} L${pts.join(' L')} L${W-pad},${H} L${pad},${H} Z`;
+  const linePath = `M${pts[0]} L${pts.join(' L')}`;
+
+  document.getElementById('trend-svg').innerHTML = `
+    <defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0057ff" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#0057ff" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${areaPath}" fill="url(#tg)"/>
+    <path d="${linePath}" fill="none" stroke="#0057ff" stroke-width="2" stroke-linejoin="round"/>
+    ${dayVals.map((v,i)=>{
+      const x=pad+(i/(dayVals.length-1||1))*(W-2*pad);
+      const y=H-pad-(v/maxDay)*(H-2*pad);
+      return v>0?`<circle cx="${x}" cy="${y}" r="3" fill="#0057ff"/>`:''
+    }).join('')}
+    ${[0,Math.round(maxDay/2),maxDay].map(v=>{
+      const y=H-pad-(v/maxDay)*(H-2*pad);
+      return `<text x="${pad-2}" y="${y+3}" text-anchor="end" font-size="9" fill="#9ca3af">${v}</text>`;
+    }).join('')}`;
+
+  // Show every Nth label
+  const step = Math.ceil(dayKeys.length/6);
+  document.getElementById('trend-labels').innerHTML = dayKeys
+    .filter((_,i)=>i%step===0||i===dayKeys.length-1)
+    .map(k=>`<span>${k.substring(5)}</span>`).join('');
+
+  // ── FLAGS BREAKDOWN ───────────────────────────────────────────────────
+  const flagCounts = {'answer pasted':0,'tab switches':0,'AI phrasing':0,'typing speed':0,'camera off':0,'face not visible':0};
+  candidates.forEach(c=>{
+    (c.assessment?.authenticityFlags||[]).concat(
+      (c.transcript||[]).flatMap(t=>t.flags||[])
+    ).forEach(f=>{
+      Object.keys(flagCounts).forEach(k=>{ if(f.toLowerCase().includes(k.toLowerCase())) flagCounts[k]++; });
+    });
+  });
+
+  const maxFlag = Math.max(...Object.values(flagCounts),1);
+  document.getElementById('flags-chart').innerHTML = Object.entries(flagCounts)
+    .sort((a,b)=>b[1]-a[1])
+    .filter(([,v])=>v>0)
+    .map(([k,v])=>`<div class="bar-row">
+      <div class="bar-label">${k}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${v/maxFlag*100}%;background:#dc2626">${v}</div></div>
+      <div class="bar-val">${v}</div>
+    </div>`).join('') || '<div style="color:#9ca3af;font-size:13px;text-align:center;padding:20px">No flags detected</div>';
+
+  // ── LOCATION CHART ─────────────────────────────────────────────────────
+  const locCounts = {};
+  candidates.forEach(c=>{
+    const loc = c.candidate?.location||c.candidate?.gps?.city||'Unknown';
+    locCounts[loc] = (locCounts[loc]||0)+1;
+  });
+  const topLocs = Object.entries(locCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxLoc = topLocs[0]?.[1]||1;
+  document.getElementById('location-chart').innerHTML = topLocs.map(([loc,cnt])=>`
+    <div class="bar-row">
+      <div class="bar-label">${loc.length>14?loc.substring(0,14)+'…':loc}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${cnt/maxLoc*100}%;background:#7c3aed">${cnt}</div></div>
+      <div class="bar-val">${cnt}</div>
+    </div>`).join('') || '<div style="color:#9ca3af;font-size:13px;text-align:center;padding:20px">No data yet</div>';
+
+  // ── EXPERIENCE CHART ──────────────────────────────────────────────────
+  const expBuckets = {'< 1 year':0,'1-2 years':0,'3-5 years':0,'6-10 years':0,'10+ years':0};
+  candidates.forEach(c=>{
+    const yoe = c.candidate?.yoe||'';
+    if(yoe.includes('Less than 1')||yoe.includes('<1')) expBuckets['< 1 year']++;
+    else if(yoe.includes('1–2')||yoe.includes('1-2')) expBuckets['1-2 years']++;
+    else if(yoe.includes('3–5')||yoe.includes('3-5')) expBuckets['3-5 years']++;
+    else if(yoe.includes('6–10')||yoe.includes('6-10')) expBuckets['6-10 years']++;
+    else if(yoe.includes('10+')) expBuckets['10+ years']++;
+  });
+  const maxExp = Math.max(...Object.values(expBuckets),1);
+  const expColors = ['#0057ff','#7c3aed','#16a34a','#d97706','#dc2626'];
+  document.getElementById('exp-chart').innerHTML = Object.entries(expBuckets).map(([k,v],i)=>`
+    <div class="bar-row">
+      <div class="bar-label">${k}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${v/maxExp*100}%;background:${expColors[i]}">${v}</div></div>
+      <div class="bar-val">${v}</div>
+    </div>`).join('');
+
+  // ── POSITION TABLE ─────────────────────────────────────────────────────
+  const posData = {};
+  candidates.forEach(c=>{
+    const role = (c.role&&c.role!=='Screening Interview')?c.role:'Unknown';
+    if(!posData[role]) posData[role]={total:0,scores:[],jdMatches:[],passed:0,terminated:0};
+    posData[role].total++;
+    if(c.assessment?.score) posData[role].scores.push(c.assessment.score);
+    if(c.assessment?.jdMatch) posData[role].jdMatches.push(c.assessment.jdMatch);
+    if(['Strong Yes','Yes'].includes(c.assessment?.verdict)) posData[role].passed++;
+    if(c.assessment?.verdict==='Terminated') posData[role].terminated++;
+  });
+
+  const tbody = document.getElementById('position-table');
+  tbody.innerHTML = Object.entries(posData)
+    .sort((a,b)=>b[1].total-a[1].total)
+    .map(([role,d])=>{
+      const avgS = d.scores.length?(d.scores.reduce((a,b)=>a+b,0)/d.scores.length).toFixed(1):'—';
+      const passRate = d.total?Math.round(d.passed/d.total*100)+'%':'—';
+      const avgJD = d.jdMatches.length?Math.round(d.jdMatches.reduce((a,b)=>a+b,0)/d.jdMatches.length)+'%':'—';
+      const scoreColor = avgS>=7?'#16a34a':avgS>=5?'#d97706':'#dc2626';
+      const scoreBg = avgS>=7?'#f0fdf4':avgS>=5?'#fffbeb':'#fef2f2';
+      const health = d.passed/d.total>=0.5?'🟢 Good':d.passed/d.total>=0.25?'🟡 Fair':'🔴 Low';
+      return `<tr>
+        <td style="font-weight:500">${role}</td>
+        <td>${d.total}</td>
+        <td><span class="score-pill" style="background:${scoreBg};color:${scoreColor}">${avgS}/10</span></td>
+        <td>${passRate}</td>
+        <td>${avgJD}</td>
+        <td style="color:${d.terminated>0?'#dc2626':'#16a34a'}">${d.terminated}</td>
+        <td>${health}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:20px">No data yet</td></tr>';
+}
+
+async function initAnalytics(){
+  document.getElementById('kpi-total').textContent = '⏳';
+  allCandidates = await loadCandidates();
+  renderAnalytics();
+}
+</script>
+</body>
+</html>

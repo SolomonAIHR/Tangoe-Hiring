@@ -617,6 +617,8 @@ async function generateLink(){
     photoInterval: document.getElementById('cfg-photo').value,
     expiry: document.getElementById('cfg-expiry').value,
     maxUses: document.getElementById('cfg-maxuses').value,
+    expiryHours: parseInt(document.getElementById('cfg-expiry')?.value||'48'),
+    expiresAt: (()=>{ const h=parseInt(document.getElementById('cfg-expiry')?.value||'48'); return h>0 ? new Date(Date.now()+h*3600000).toISOString() : null; })(),
     expiryDays: parseInt(document.getElementById('cfg-expiry')?.value||'30'),
     expiresAt: (()=>{ const d=parseInt(document.getElementById('cfg-expiry')?.value||'30'); return d>0 ? new Date(Date.now()+d*86400000).toISOString() : null; })(),
     email: document.getElementById('cfg-email').value,

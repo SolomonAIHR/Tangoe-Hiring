@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Tangoe Hiring · Interview</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='12' fill='%2322c97a'/><text y='.9em' font-size='75' font-family='Arial Black' fill='white'>T</text></svg>"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -558,6 +559,10 @@ function startSimpleCamCheck(){
 
   _camCheckInterval = setInterval(()=>{
     if(typeof currentStep === 'undefined' || currentStep < 3) return;
+    // Don't check camera during review step or after done
+    const reviewStep = document.getElementById('s4r');
+    if(reviewStep && reviewStep.style.display !== 'none') return;
+    if(currentStep >= 5) return;
 
     let camBad = false;
     let reason = '';
@@ -695,8 +700,14 @@ function startSimpleCamCheck(){
 // Tab switch detection
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){
-    // During interview
-    if(qCount > 0){
+    // Only flag during active interview steps (not review, not done)
+    const reviewStep = document.getElementById('s4r');
+    const isReview = reviewStep && reviewStep.style.display !== 'none';
+    const isDone = currentStep >= 5;
+    if(isReview || isDone) return; // don't flag during review or done
+
+    // During interview questions
+    if(qCount > 0 && currentStep === 4){
       tabSwitchCount++;
       addBubble(`⚠️ Tab switch detected (${tabSwitchCount}x). Please stay on this page during your interview.`,'warn');
     }
@@ -1154,6 +1165,19 @@ async function goCamera(){
 
   if(continueBtn){ continueBtn.disabled=false; continueBtn.textContent='Continue to camera check →'; }
 
+  // ✅ Extract and analyze resume vs JD in background
+  if(resumeFile && (JD || config.jd)){
+    extractResumeText(resumeFile).then(async resumeText => {
+      if(resumeText){
+        const analysis = await analyzeResumeVsJD(resumeText, JD||config.jd, ROLE);
+        if(analysis){
+          cur.resumeAnalysis = analysis;
+          console.log('Resume analysis:', analysis);
+        }
+      }
+    }).catch(e => console.warn('Resume analysis error:', e));
+  }
+
   const companyRaw = document.getElementById('c-company').value.trim();
   const companyVerif = window._companyVerifResult || {status:'not_checked', name: companyRaw};
   cur={
@@ -1292,10 +1316,13 @@ STRICT RULES:
 5. Probe for: specific tools used, real project examples, actual metrics/outcomes
 6. If answer is vague or too short: ask for a concrete example from recent work
 7. Cover different JD areas: technical skills, past projects, specific tools, problem solving
-8. After exactly ${TOTAL_Q} candidate answers, output ONLY:
+8. You MUST ask EXACTLY ${TOTAL_Q} questions — no more, no less. Count carefully.
+9. After the candidate answers question number ${TOTAL_Q} (their ${TOTAL_Q}th answer), IMMEDIATELY output ONLY:
 Line 1: DONE
 Line 2: valid JSON (no markdown):
 {"verdict":"Strong Yes","score":8,"strengths":["X","Y"],"concerns":["Z"],"jdMatch":85,"summary":"2 sentence summary comparing candidate to JD requirements."}
+
+CRITICAL: Do NOT ask question ${TOTAL_Q + 1}. Stop at exactly ${TOTAL_Q} answers.
 ${cheatNote}
 Verdict: Strong Yes(9-10)/Yes(7-8)/Maybe(5-6)/No(1-4). Be conversational, professional, precise.
 IMPORTANT: Do NOT use markdown formatting (no **bold**, no ##headings, no bullet points with *). Write in plain conversational text only.`;
@@ -1311,7 +1338,7 @@ async function sendAns(){
   const flags=[];
   if(typing.likelyPasted) flags.push('answer pasted');
   if(typing.suspiciouslyFast) flags.push(`speed: ${typing.wpm}wpm`);
-  if(content.aiScore>=4) flags.push(`AI phrasing score: ${content.aiScore}/10`);
+  if(content.aiScore>=7) flags.push(`AI phrasing score: ${content.aiScore}/10`);
   if(tabSwitchCount>0) flags.push(`tab switches: ${tabSwitchCount}`);
 
   // Only show flag banner for significant flags (not just short answers)
@@ -1334,7 +1361,9 @@ async function sendAns(){
   qCount++;
   updateDots(qCount);
   setQLabel(qCount+1);
-  chat.push({role:'user',content:a});
+  // Tell Claude which answer number this is
+  const answerWithCount = `[Answer ${qCount} of ${TOTAL_Q}] ${a}`;
+  chat.push({role:'user', content: answerWithCount});
   resetTypingTracker();
 
   // ✅ FIX: Force finish after TOTAL_Q answers
@@ -1376,7 +1405,12 @@ async function sendAns(){
   scrollChat();
 
   const cheatCtx=flags.length?flags.join(', '):null;
-  const reply=await callClaude(cheatCtx);
+  // If this is the last question, remind Claude to wrap up
+  const isLastQ = qCount >= TOTAL_Q - 1;
+  const finalCtx = isLastQ 
+    ? `${cheatCtx||''} IMPORTANT: This was answer ${qCount} of ${TOTAL_Q}. Ask your final question now (question ${qCount+1} of ${TOTAL_Q}).`.trim()
+    : cheatCtx;
+  const reply=await callClaude(finalCtx);
   chat.push({role:'assistant',content:reply});
   think.remove();
   btn.disabled=false;btn.textContent='Send →';
@@ -1419,6 +1453,7 @@ async function finish(reply){
     transcript:tx,
     photos,
     role: ROLE || config.role || 'Unknown',
+    resumeAnalysis: cur.resumeAnalysis || null,
     req: config.req || '',
     jd: JD || config.jd || '',
     linkId: urlParams.get('id') || '',
@@ -1659,6 +1694,13 @@ async function submitFinal(){
   btn.disabled=true;
   btn.innerHTML='<span class="spin"></span> Submitting…';
 
+  // ✅ STOP ALL MONITORING immediately on submit
+  stopFaceDetection();
+  if(_camCheckInterval){ clearInterval(_camCheckInterval); _camCheckInterval=null; }
+  hideFaceWarning();
+  const introWarn = document.getElementById('intro-cam-warning');
+  if(introWarn) introWarn.style.display='none';
+
   // Disable ALL edit buttons so candidate can't change anything
   document.querySelectorAll('#review-list button').forEach(b=>b.disabled=true);
 
@@ -1710,7 +1752,7 @@ async function uploadResumeToCloudinary(file){
     const fd = new FormData();
     fd.append('file', file);
     fd.append('upload_preset', CLOUDINARY_PRESET);
-    fd.append('resource_type', 'raw'); // raw = any file type
+    fd.append('resource_type', 'auto'); // auto = detects PDF/Word correctly
     fd.append('folder', 'tangoe-resumes');
     fd.append('public_id', 'resume_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g,'_'));
     const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/raw/upload`, {
@@ -1721,6 +1763,77 @@ async function uploadResumeToCloudinary(file){
     return null;
   }catch(e){
     console.warn('Resume upload failed:', e);
+    return null;
+  }
+}
+
+// ── RESUME TEXT EXTRACTION ───────────────────────────────────────────────
+async function extractResumeText(file){
+  try{
+    if(file.type === 'application/pdf' || file.name.endsWith('.pdf')){
+      // Extract text from PDF using PDF.js
+      const pdfjsLib = window['pdfjs-dist/build/pdf'];
+      if(pdfjsLib){
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+        let text = '';
+        for(let i=1; i<=Math.min(pdf.numPages, 5); i++){
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map(item => item.str).join(' ') + ' ';
+        }
+        return text.trim();
+      }
+    }
+    // For Word docs - just use filename and let Claude know
+    return null;
+  }catch(e){
+    console.warn('Resume text extraction failed:', e);
+    return null;
+  }
+}
+
+// ── RESUME vs JD ANALYSIS via Claude ─────────────────────────────────────
+async function analyzeResumeVsJD(resumeText, jdText, role){
+  if(!resumeText || !jdText) return null;
+  try{
+    const prompt = `You are analyzing a resume against a job description.
+
+JOB DESCRIPTION:
+${jdText.substring(0, 2000)}
+
+RESUME TEXT:
+${resumeText.substring(0, 3000)}
+
+Analyze and respond ONLY with valid JSON (no markdown):
+{
+  "matchScore": 75,
+  "extractedSkills": ["skill1", "skill2"],
+  "matchedSkills": ["skill that matches JD"],
+  "missingSkills": ["required skill not in resume"],
+  "experienceMatch": "Good/Partial/Weak",
+  "summary": "2 sentence analysis",
+  "recommendation": "Proceed/Review/Reject"
+}`;
+
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
+        system: 'You are a resume screening expert. Respond only with valid JSON.',
+        messages: [{role:'user', content: prompt}]
+      })
+    });
+    const d = await r.json();
+    const text = d.content?.[0]?.text || '';
+    const json = text.match(/\{[\s\S]*\}/)?.[0];
+    if(json) return JSON.parse(json);
+    return null;
+  }catch(e){
+    console.warn('Resume analysis failed:', e);
     return null;
   }
 }

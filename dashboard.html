@@ -237,6 +237,38 @@ body{font-family:'DM Sans',sans-serif;background:#f0f2f8;color:#0f1117;min-heigh
     <div class="photos-grid" id="m-photos"></div>
   </div>
 
+  <!-- RECRUITER NOTES -->
+  <div class="m-sec">
+    <div class="m-sec-title">📝 Recruiter Notes</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <textarea id="m-notes" rows="3" placeholder="Add your notes about this candidate..."
+        style="width:100%;font-family:'DM Sans',sans-serif;font-size:13px;color:#0f1117;background:#f8f9fc;border:1px solid var(--border);border-radius:8px;padding:10px 12px;outline:none;resize:vertical;line-height:1.6"
+        oninput="autoSaveNotes()"></textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span id="notes-saved" style="font-size:11px;color:#16a34a;display:none">✓ Saved</span>
+        <button onclick="saveNotes()" style="font-size:12px;background:#0057ff;color:#fff;border:none;border-radius:6px;padding:5px 14px;cursor:pointer">Save notes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTERVIEW REPLAY -->
+  <div class="m-sec" id="m-replay-section" style="display:none">
+    <div class="m-sec-title">🎬 Interview Replay</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <video id="m-replay-video" controls style="width:100%;border-radius:10px;background:#000;aspect-ratio:4/3"></video>
+        <div style="font-size:11px;color:#6b7280;margin-top:6px;text-align:center">Video Introduction</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto" id="m-replay-transcript"></div>
+    </div>
+  </div>
+
+  <!-- SCORE HISTORY -->
+  <div class="m-sec" id="m-history-section" style="display:none">
+    <div class="m-sec-title">📊 Interview History (Same Candidate)</div>
+    <div id="m-history-list" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+
   <div class="m-sec">
     <div class="m-sec-title">Full interview transcript</div>
     <div class="m-box" id="m-transcript"></div>
@@ -254,6 +286,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f2f8;color:#0f1117;min-heigh
 <script>
 let candidates=[], activeCand=null;
 let isLoading = false;
+let _notesSaveTimer = null;
 
 async function load(){
   try{
@@ -338,8 +371,8 @@ function renderTable(){
       <div class="name-cell">
         <div class="avatar">${initials}</div>
         <div>
-          <div style="font-weight:600;font-size:13px;color:#0f1117">${cand.name||'Unknown'} ${hasVideo?'<span style="font-size:10px;background:rgba(79,142,255,.15);color:#0057ff;padding:2px 6px;border-radius:4px;margin-left:4px">🎥 video</span>':''}</div>
-          <div style="font-size:11px;color:#0057ff;font-weight:500">${c.role||cand.role||''}${c.req?` <span style="font-size:10px;background:#f0f4ff;color:#0057ff;border:1px solid #c7d7ff;padding:1px 6px;border-radius:4px;margin-left:4px">${c.req}</span>`:''}</div>
+          <div style="font-weight:600;font-size:13px;color:#0f1117">${cand.name||'Unknown'} ${hasVideo?'<span style="font-size:10px;background:rgba(79,142,255,.15);color:#0057ff;padding:2px 6px;border-radius:4px;margin-left:4px">🎥 video</span>':''} ${c.notes||localStorage.getItem('notes_'+(cand.email||c.completedAt))?'<span style="font-size:10px;background:#fffbeb;color:#d97706;padding:2px 6px;border-radius:4px;margin-left:4px">📝 notes</span>':''}</div>
+          <div style="font-size:11px;color:#0057ff;font-weight:500">${(()=>{ const r=c.role||cand.role||''; return (r && r!=='Screening Interview')?r:(c.jd?c.jd.split('\n')[0].substring(0,50):'Unknown Role'); })()}${c.req?` <span style="font-size:10px;background:#f0f4ff;color:#0057ff;border:1px solid #c7d7ff;padding:1px 6px;border-radius:4px;margin-left:4px">${c.req}</span>`:''}</div>
           <div style="font-size:11px;color:#6b7280">${cand.email||''} · ${time}</div>
         </div>
       </div>
@@ -351,6 +384,29 @@ function renderTable(){
       <div style="font-size:12px;color:var(--accent);font-weight:500">View →</div>
     </div>`;
   }).join('');
+}
+
+// ── RECRUITER NOTES ──────────────────────────────────────────────────────
+_notesSaveTimer = null;
+
+function autoSaveNotes(){
+  clearTimeout(_notesSaveTimer);
+  _notesSaveTimer = setTimeout(saveNotes, 1500);
+}
+
+function saveNotes(){
+  const notesEl = document.getElementById('m-notes');
+  if(!notesEl) return;
+  const key = notesEl.dataset.key;
+  const idx = parseInt(notesEl.dataset.idx);
+  const notes = notesEl.value;
+  if(key) localStorage.setItem(key, notes);
+  // Save to candidate object
+  const displayList = (filteredCandidates && filteredCandidates.length) ? filteredCandidates : candidates;
+  const c = displayList[idx];
+  if(c){ c.notes = notes; const mi = candidates.findIndex(x=>x.completedAt===c.completedAt); if(mi>=0) candidates[mi].notes=notes; }
+  const saved = document.getElementById('notes-saved');
+  if(saved){ saved.style.display='block'; setTimeout(()=>saved.style.display='none', 2000); }
 }
 
 function setStatus(idx, status){
@@ -391,6 +447,68 @@ function openCand(idx){
   const jdMatch=a.jdMatch||0;
   document.getElementById('m-jd-pct').textContent=jdMatch?jdMatch+'%':'—';
   document.getElementById('m-jd-bar').style.width=jdMatch?jdMatch+'%':'0%';
+
+  // ── RESUME AI ANALYSIS ────────────────────────────────────────────────
+  const resumeAI = document.getElementById('m-resume-ai');
+  if(resumeAI && c.resumeAnalysis){
+    const ra = c.resumeAnalysis;
+    const recColor = ra.recommendation==='Proceed'?'#16a34a':ra.recommendation==='Review'?'#d97706':'#dc2626';
+    const recBg = ra.recommendation==='Proceed'?'#f0fdf4':ra.recommendation==='Review'?'#fffbeb':'#fef2f2';
+    resumeAI.innerHTML = `
+      <div style="border:1px solid #e2e6f0;border-radius:10px;padding:14px;background:#fafbff">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;color:#0f1117">🤖 AI Resume Analysis</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:12px;font-weight:700;color:${recColor};background:${recBg};border:1px solid ${recColor}33;padding:3px 10px;border-radius:999px">${ra.recommendation||'Review'}</span>
+            <span style="font-size:13px;font-weight:700;color:${recColor}">${ra.matchScore||0}% match</span>
+          </div>
+        </div>
+        <div style="height:6px;background:#e2e6f0;border-radius:3px;overflow:hidden;margin-bottom:10px">
+          <div style="height:100%;width:${ra.matchScore||0}%;background:${recColor};border-radius:3px"></div>
+        </div>
+        <div style="font-size:12px;color:#374151;margin-bottom:8px;line-height:1.6">${ra.summary||''}</div>
+        ${ra.matchedSkills?.length?`<div style="margin-bottom:6px"><span style="font-size:11px;color:#16a34a;font-weight:600">✅ Skills matched (${ra.matchedSkills.length}):</span><br/><span style="font-size:11px;color:#374151">${ra.matchedSkills.join(', ')}</span></div>`:''}
+        ${ra.missingSkills?.length?`<div><span style="font-size:11px;color:#dc2626;font-weight:600">❌ Missing skills (${ra.missingSkills.length}):</span><br/><span style="font-size:11px;color:#6b7280">${ra.missingSkills.join(', ')}</span></div>`:''}
+        <div style="margin-top:8px;font-size:11px;color:#6b7280">Experience match: <strong>${ra.experienceMatch||'—'}</strong></div>
+      </div>`;
+  } else if(resumeAI){
+    resumeAI.innerHTML = '<div style="font-size:11px;color:#9ca3af;padding:4px 0">Resume AI analysis not available for this submission.</div>';
+  }
+
+  // ── SKILLS MATCH ANALYSIS ─────────────────────────────────────────────
+  const skillsMatchEl = document.getElementById('m-skills-match');
+  if(skillsMatchEl){
+    const candidateSkills = (cand.skills||cand.tool||'').toLowerCase()
+      .split(/[,\s;]+/).map(s=>s.trim()).filter(s=>s.length>2);
+    const jdText = (c.jd||'').toLowerCase();
+    if(jdText && candidateSkills.length){
+      const stopWords = new Set(['the','and','for','with','that','this','have','from','will',
+        'your','are','can','our','you','all','not','but','was','has','its','been','also',
+        'than','only','into','they','when','more','over','about','using','their','which','these',
+        'must','should','would','could','work','role','team','experience','skills','strong',
+        'knowledge','ability','including','required','preferred','good','excellent']);
+      const jdTerms = [...new Set((jdText.match(/[a-z][a-z0-9+#.]{1,}/g)||[])
+        .filter(w=>w.length>2 && !stopWords.has(w)))];
+      const matched = candidateSkills.filter(s=>jdTerms.some(t=>t.includes(s)||s.includes(t)));
+      const notInSkills = jdTerms.filter(t=>t.length>3 && 
+        !candidateSkills.some(s=>t.includes(s)||s.includes(t))).slice(0,12);
+      const pct = Math.min(100,Math.round(matched.length/Math.max(candidateSkills.length,1)*100));
+      const col = pct>=70?'#16a34a':pct>=40?'#d97706':'#dc2626';
+      skillsMatchEl.innerHTML = `
+        <div style="margin-top:4px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="font-size:13px;font-weight:600;color:${col}">${pct}% skills match with JD</span>
+            <div style="flex:1;height:6px;background:#e2e6f0;border-radius:3px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${col};border-radius:3px"></div>
+            </div>
+          </div>
+          ${matched.length?`<div style="margin-bottom:6px"><span style="font-size:11px;color:#16a34a;font-weight:600">✅ Matched (${matched.length}):</span> <span style="font-size:11px;color:#374151">${matched.join(', ')}</span></div>`:''}
+          ${notInSkills.length?`<div><span style="font-size:11px;color:#d97706;font-weight:600">⚠️ JD keywords not claimed:</span> <span style="font-size:11px;color:#6b7280">${notInSkills.join(', ')}</span></div>`:''}
+        </div>`;
+    } else {
+      skillsMatchEl.innerHTML = '<div style="font-size:12px;color:#9ca3af">Skills match not available for this interview.</div>';
+    }
+  }
 
   // 🎥 VIDEO INTRO
   const videoWrap = document.getElementById('video-container-wrap');
@@ -517,6 +635,68 @@ function openCand(idx){
     const cs = c.status||'';
     const sb = (s,col,bg,label) => `<button onclick="setStatus(${idx},'${s}')" style="font-size:12px;padding:6px 16px;border-radius:6px;cursor:pointer;border:1px solid ${col};background:${cs===s?col:bg};color:${cs===s?'#fff':col};font-weight:500">${label}</button>`;
     sDiv.innerHTML = sb('Shortlisted','#16a34a','#f0fdf4','✅ Shortlist') + sb('On Hold','#d97706','#fffbeb','⏸ Hold') + sb('Rejected','#dc2626','#fef2f2','❌ Reject') + sb('Interview Again','#0057ff','#f0f4ff','🔄 Re-interview') + (cs ? `<span style="font-size:12px;color:#6b7280;padding:6px">Status: <strong>${cs}</strong></span>` : '');
+  }
+
+  // Load recruiter notes
+  const notesEl = document.getElementById('m-notes');
+  const notesKey = 'notes_' + (c.candidate?.email||c.completedAt||idx);
+  if(notesEl){
+    notesEl.value = localStorage.getItem(notesKey) || c.notes || '';
+    notesEl.dataset.key = notesKey;
+    notesEl.dataset.idx = idx;
+    document.getElementById('notes-saved').style.display='none';
+  }
+
+  // Interview replay
+  const replaySection = document.getElementById('m-replay-section');
+  const replayVideo = document.getElementById('m-replay-video');
+  const replayTranscript = document.getElementById('m-replay-transcript');
+  const videoUrl = c.candidate?.introVideoUrl;
+  if(videoUrl && replaySection && replayVideo){
+    replaySection.style.display='block';
+    replayVideo.src = videoUrl;
+    if(replayTranscript){
+      replayTranscript.innerHTML = (c.transcript||[]).map((t,i)=>`
+        <div style="background:#f8f9fc;border:1px solid #e2e6f0;border-radius:8px;padding:10px 12px;font-size:12px">
+          <div style="font-weight:600;color:#0057ff;margin-bottom:4px">Q${i+1}: ${t.q?.substring(0,80)||''}...</div>
+          <div style="color:#374151;line-height:1.5">${t.a?.substring(0,150)||'No answer'}${(t.a?.length||0)>150?'...':''}</div>
+          ${t.flags?.length?`<div style="color:#d97706;font-size:10px;margin-top:4px">⚠️ ${t.flags.join(' · ')}</div>`:''}
+        </div>`).join('');
+    }
+  } else if(replaySection){
+    replaySection.style.display='none';
+  }
+
+  // ── SCORE HISTORY ────────────────────────────────────────────────────
+  const historySection = document.getElementById('m-history-section');
+  const historyList = document.getElementById('m-history-list');
+  if(historySection && historyList && cand.email){
+    const sameCandidate = candidates.filter(x =>
+      x.candidate?.email === cand.email && x.completedAt !== c.completedAt
+    );
+    if(sameCandidate.length > 0){
+      historySection.style.display = 'block';
+      historyList.innerHTML = `
+        <div style="font-size:12px;color:#d97706;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 12px;margin-bottom:8px">
+          ⚠️ This candidate has taken <strong>${sameCandidate.length + 1}</strong> interview(s) total
+        </div>` +
+        sameCandidate.map(h => {
+          const ha = h.assessment||{};
+          const col = ha.score>=7?'#16a34a':ha.score>=5?'#d97706':'#dc2626';
+          return `<div style="display:flex;align-items:center;justify-content:space-between;background:#f8f9fc;border:1px solid #e2e6f0;border-radius:8px;padding:10px 14px">
+            <div>
+              <div style="font-size:13px;font-weight:500;color:#0f1117">${h.role||'Unknown Role'} ${h.req?`<span style="color:#0057ff;font-size:11px">[${h.req}]</span>`:''}</div>
+              <div style="font-size:11px;color:#6b7280">${new Date(h.completedAt||0).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:18px;font-weight:700;color:${col}">${ha.score||0}/10</div>
+              <div style="font-size:11px;color:${col}">${ha.verdict||'—'}</div>
+            </div>
+          </div>`;
+        }).join('');
+    } else {
+      historySection.style.display = 'none';
+    }
   }
 
   document.getElementById('m-transcript').textContent=(c.transcript||[]).map((t,i)=>{
@@ -738,6 +918,29 @@ function exportToPDF(){
 }
 
 // ── CANDIDATE STATUS ─────────────────────────────────────────────────────
+// ── RECRUITER NOTES ──────────────────────────────────────────────────────
+_notesSaveTimer = null;
+
+function autoSaveNotes(){
+  clearTimeout(_notesSaveTimer);
+  _notesSaveTimer = setTimeout(saveNotes, 1500);
+}
+
+function saveNotes(){
+  const notesEl = document.getElementById('m-notes');
+  if(!notesEl) return;
+  const key = notesEl.dataset.key;
+  const idx = parseInt(notesEl.dataset.idx);
+  const notes = notesEl.value;
+  if(key) localStorage.setItem(key, notes);
+  // Save to candidate object
+  const displayList = (filteredCandidates && filteredCandidates.length) ? filteredCandidates : candidates;
+  const c = displayList[idx];
+  if(c){ c.notes = notes; const mi = candidates.findIndex(x=>x.completedAt===c.completedAt); if(mi>=0) candidates[mi].notes=notes; }
+  const saved = document.getElementById('notes-saved');
+  if(saved){ saved.style.display='block'; setTimeout(()=>saved.style.display='none', 2000); }
+}
+
 function setStatus(idx, status){
   const displayList = filteredCandidates.length ? filteredCandidates : candidates;
   const c = displayList[idx];
