@@ -594,14 +594,14 @@ function startSimpleCamCheck(){
             for(let i=0; i<d.length; i+=4) b += (d[i]+d[i+1]+d[i+2])/3;
             const avg = Math.round(b/(d.length/4));
             // Only flag if consistently dark (not a momentary glitch)
-            if(avg < 40){
+            if(avg < 20){ // Only truly black/covered camera (not dim lighting)
               window._darkFrameCount = (window._darkFrameCount||0) + 1;
-              if(window._darkFrameCount >= 3){ // 3 consecutive dark frames = real issue
+              if(window._darkFrameCount >= 5){ // 5 consecutive dark frames = real issue
                 camBad = true;
-                reason = `Face not visible (brightness:${avg})`;
+                reason = `Camera covered (brightness:${avg})`;
               }
             } else {
-              window._darkFrameCount = 0; // reset on bright frame
+              window._darkFrameCount = 0; // reset on any normal frame
             }
             checked = true;
             break;
@@ -611,24 +611,26 @@ function startSimpleCamCheck(){
       }
     }
 
-    const GRACE = 15; // 15 seconds grace for BOTH intro and interview
+    const GRACE = 30; // 30 seconds grace for BOTH intro and interview
 
     if(camBad){
       _camOffSeconds++;
       _camGoodSeconds = 0; // reset good counter
       console.warn('Camera:', reason, '| seconds:', _camOffSeconds);
 
-      // ── BEEP every second while camera is bad ──────────────────────
-      try{
-        const actx = new AudioContext();
-        const osc = actx.createOscillator();
-        const gain = actx.createGain();
-        osc.connect(gain); gain.connect(actx.destination);
-        osc.frequency.value = _camOffSeconds >= GRACE ? 1200 : 880;
-        gain.gain.setValueAtTime(0.3, actx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.3);
-        osc.start(); osc.stop(actx.currentTime + 0.3);
-      }catch(e){}
+      // ── BEEP every 5 seconds (not every second) ──────────────────
+      if(_camOffSeconds % 5 === 1){
+        try{
+          const actx = new AudioContext();
+          const osc = actx.createOscillator();
+          const gain = actx.createGain();
+          osc.connect(gain); gain.connect(actx.destination);
+          osc.frequency.value = _camOffSeconds >= GRACE ? 1200 : 880;
+          gain.gain.setValueAtTime(0.3, actx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.3);
+          osc.start(); osc.stop(actx.currentTime + 0.3);
+        }catch(e){}
+      }
 
       const remaining = Math.max(0, GRACE - _camOffSeconds);
 
@@ -637,23 +639,17 @@ function startSimpleCamCheck(){
         const introWarn = document.getElementById('intro-cam-warning');
         if(introWarn){
           introWarn.style.cssText = 'display:block!important;background:#dc2626;color:#fff;border-radius:8px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:12px;border:none';
-          introWarn.innerHTML = `🚨 <strong>Camera screen is black — face not visible!</strong> Please uncover your camera immediately. Recording is paused.${remaining > 0 ? ` Terminating in <strong style="font-size:16px">${remaining}s</strong>` : ' Terminating now...'}`;
+          introWarn.innerHTML = `🚨 <strong>Camera not visible!</strong> Please uncover your camera. Recording paused.`;
         }
-        // Stop recording immediately
         if(introRecorder && introRecorder.state === 'recording'){
           introRecorder.pause();
           const stopBtn = document.getElementById('intro-stop-btn');
-          if(stopBtn) stopBtn.innerHTML = '⏸ Recording paused — show face to resume';
+          if(stopBtn) stopBtn.innerHTML = '⏸ Paused — show face to resume';
         }
-        // Flag camera issue but don't increment tabSwitchCount for camera
-        if(_camOffSeconds >= GRACE){
-          clearInterval(_camCheckInterval);
-          _camCheckInterval = null;
-          autoCloseInterview();
-        }
+        // NO auto-terminate during video intro
       }
 
-      // ── STEP 4 (Interview) ─────────────────────────────────────────
+      // ── STEP 4── STEP 4 (Interview) ─────────────────────────────────────────
       else if(currentStep === 4){
         // Disable answer input
         const inp = document.getElementById('ans');
@@ -951,7 +947,7 @@ async function startFaceDetection(){
           totalBrightness += (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
         }
         const avgBrightness = totalBrightness / (pixels.length/4);
-        if(avgBrightness < 30){ // Dark screen = covered or face not visible (raised from 40)
+        if(avgBrightness < 20){ // Only truly black = covered camera
           tabSwitchCount++;
           showFaceWarning('🚨 <strong>Camera appears to be covered or blocked!</strong> Please uncover your camera immediately. Interview will terminate in <span id="face-countdown">30</span>s');
           startNoFaceCountdown();
@@ -982,16 +978,10 @@ async function startFaceDetection(){
 
 function startNoFaceCountdown(){
   if(noFaceTimer) return;
+  // Only start countdown during interview (step 4), not other steps
+  if(currentStep !== 4) return;
   noFaceSeconds = NO_FACE_LIMIT;
-  // Play beep sound warning
-  try{
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    osc.connect(ctx.destination);
-    osc.frequency.value = 880;
-    osc.start(); osc.stop(ctx.currentTime + 0.3);
-  }catch(e){}
-  showFaceWarning(`🚨 <strong>CAMERA MANDATORY</strong> — Face not detected! Interview will terminate in <span id="face-countdown">${NO_FACE_LIMIT}</span> seconds. Look at your camera now!`);
+  showFaceWarning(`🚨 <strong>Face not detected!</strong> Please look at your camera. Interview terminates in <span id="face-countdown">${NO_FACE_LIMIT}</span>s`);
   
   noFaceTimer = setInterval(()=>{
     noFaceSeconds--;
@@ -2382,6 +2372,9 @@ function redoIntro(){
 }
 
 async function proceedToInterview(){
+  // ✅ CRITICAL: Re-read TOTAL_Q from config here
+  TOTAL_Q = getTOTAL_Q();
+  console.log('🎯 TOTAL_Q at interview start:', TOTAL_Q, '| config.questions:', config.questions);
   // Upload intro video to Cloudinary before starting interview
   if(introBlob){
     const btn=document.getElementById("intro-proceed-btn");
