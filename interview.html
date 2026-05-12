@@ -560,11 +560,15 @@ function startSimpleCamCheck(){
 
   _camCheckInterval = setInterval(()=>{
     if(typeof currentStep === 'undefined' || currentStep < 3) return;
+    // Skip during review and done steps
+    if(currentStep >= 5) return;
+    const reviewEl = document.getElementById('s4r');
+    if(reviewEl && reviewEl.style.display !== 'none') return;
 
     let camBad = false;
     let reason = '';
 
-    // ── CHECK 1: Stream/track ended (camera physically disabled) ──────────
+    // ── CHECK 1: Stream/track ended ───────────────────────────────────────
     if(!stream){
       camBad = true; reason = 'No camera stream';
     } else {
@@ -573,13 +577,14 @@ function startSimpleCamCheck(){
       else if(tracks[0].readyState === 'ended'){ camBad = true; reason = 'Camera disconnected'; }
       else if(!tracks[0].enabled){ camBad = true; reason = 'Camera disabled'; }
       else {
-        // ── CHECK 2: Black frame (only during video intro step 3) ──────────
-        // During interview (step 4), skip brightness check — candidate is typing
-        if(currentStep === 3){
+        // ── CHECK 2: Black frame brightness check ─────────────────────────
+        // Step 3: use intro-preview | Step 4: use cam-video2
+        if(currentStep === 3 || currentStep === 4){
           try{
-            // Find the active video element with actual stream
-            const v = document.getElementById('intro-preview');
-            if(v && v.srcObject){
+            const v = currentStep === 3
+              ? document.getElementById('intro-preview')
+              : document.getElementById('cam-video2') || document.getElementById('cam-video');
+            if(v && v.srcObject && v.videoWidth > 0){
               const c = document.createElement('canvas');
               c.width = 64; c.height = 64;
               const ctx = c.getContext('2d');
@@ -950,10 +955,12 @@ async function startFaceDetection(){
 
   faceDetectionInterval = setInterval(async ()=>{
     if(!faceDetectionActive) return;
-    // Only run during interview step 4
-    if(currentStep !== 4) return;
+    // Run during step 3 (video intro) and step 4 (interview)
+    if(currentStep !== 3 && currentStep !== 4) return;
 
-    const videoEl = document.getElementById('cam-video2') || document.getElementById('cam-video');
+    const videoEl = currentStep === 3
+      ? document.getElementById('intro-preview')
+      : document.getElementById('cam-video2') || document.getElementById('cam-video');
     if(!videoEl || !videoEl.srcObject) return;
 
     // ── CHECK 1: Black frame ─────────────────────────────────────────
@@ -2308,6 +2315,9 @@ async function goBackToCamera(){
 }
 
 function startIntroRecording(){
+  // ✅ Set srcObject on intro-preview for brightness detection
+  const prevEl = document.getElementById('intro-preview');
+  if(prevEl && stream && !prevEl.srcObject){ prevEl.srcObject = stream; prevEl.muted = true; prevEl.play().catch(()=>{}); }
   if(!stream || stream.getTracks().every(t=>t.readyState==='ended')){
     const w = document.getElementById('intro-cam-warning');
     if(w){ w.style.display='block'; w.innerHTML='⚠️ <strong>Camera not available.</strong> Please click "← Back to camera" to re-enable your camera first.'; }
