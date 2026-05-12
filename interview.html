@@ -2117,11 +2117,18 @@ function isGibberish(name){
 // Check against known companies list
 function checkKnownList(name){
   const n = name.toLowerCase().trim();
+  // Too short - minimum 4 characters
+  if(n.length < 4) return {found:false};
   // Exact match
   if(KNOWN_COMPANIES.has(n)) return {found:true, type:'exact'};
-  // Partial match (name contains known company)
+  // Partial match - only if typed text matches START of company name
+  // NOT if company name contains typed text (prevents "ta" matching "tangoe")
   for(const k of KNOWN_COMPANIES){
-    if(n.includes(k) || k.includes(n)) return {found:true, type:'partial', matched:k};
+    // typed text must start the company name OR be an exact word in it
+    const kWords = k.split(/[\s\-_&,.]+/);
+    if(k.startsWith(n) || kWords.some(w => w === n || (w.startsWith(n) && n.length >= 4))){
+      return {found:true, type:'partial', matched:k};
+    }
   }
   return {found:false};
 }
