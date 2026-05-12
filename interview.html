@@ -740,10 +740,12 @@ function startSimpleCamCheck(){
       window._step4BlackFrame = 0; // reset black frame counter when camera good
       _camOffSeconds = 0;
       _camGoodSeconds = (_camGoodSeconds||0) + 1;
-      if(_camGoodSeconds >= 2){
+      if(_camGoodSeconds >= 3){ // 3 good seconds before clearing warning
         const introWarn = document.getElementById('intro-cam-warning');
         if(introWarn && introWarn.style.display !== 'none'){ introWarn.style.display='none'; }
         hideFaceWarning();
+        window._darkFrameCount = 0;
+        window._step4BlackFrame = 0;
       }
     }
   }, 1000);
@@ -2180,9 +2182,16 @@ async function checkClearbit(name){
     // Check name similarity
     const words = nameLower.split(/\s+/).filter(w=>w.length>2);
     const matchScore = words.filter(w=>topLower.includes(w)).length / Math.max(words.length,1);
-    // Minimum 4 chars AND company name must contain full typed text
-    if(nameLower.length >= 4 && topLower.includes(nameLower)){
-      return {found:true, name:top.name, domain:top.domain, logo:top.logo};
+    // Minimum 4 chars AND typed text must match start of company name or a word in it
+    if(nameLower.length >= 4){
+      // Match: company starts with typed text OR typed text is the full company name
+      const words = topLower.split(/[\s\-_&,.]+/);
+      const startsMatch = topLower.startsWith(nameLower);
+      const wordMatch = words.some(w => w.startsWith(nameLower) && nameLower.length >= 4);
+      const exactMatch = topLower === nameLower;
+      if(startsMatch || wordMatch || exactMatch){
+        return {found:true, name:top.name, domain:top.domain, logo:top.logo};
+      }
     }
     return {found:false, closest:top.name};
   }catch(e){ return {found:false}; }
