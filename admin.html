@@ -604,28 +604,30 @@ async function generateLink(){
     document.getElementById('jd-role')?.value?.trim() || jd.role || '';
   const currentJD = document.getElementById('jd-text')?.value?.trim() || jd.text;
 
+  // Get role - try all sources
+  const finalRoleVal = (typeof getFinalRole==='function' ? getFinalRole() : '') ||
+    document.getElementById('jd-role')?.value?.trim() ||
+    document.getElementById('jd-role-select')?.value?.replace('__custom__','') ||
+    jd.role || 'Screening Interview';
+
   const config = {
-    role: currentRole || jd.role || '',
+    role: finalRoleVal,
     req: document.getElementById('jd-req')?.value?.trim() || jd.req || '',
     jd: currentJD || jd.text,
-    questions: document.getElementById('cfg-questions').value,
-    focus: document.getElementById('cfg-focus').value,
-    level: document.getElementById('cfg-level').value,
+    questions: parseInt(document.getElementById('cfg-questions').value) || 6,
+    focus: document.getElementById('cfg-focus').value || 'balanced',
+    level: document.getElementById('cfg-level').value || 'mid',
     camera: document.getElementById('cfg-camera').checked,
     pasteDetect: document.getElementById('cfg-paste').checked,
     tabDetect: document.getElementById('cfg-tab').checked,
-    photoInterval: document.getElementById('cfg-photo').value,
-    expiry: document.getElementById('cfg-expiry').value,
-    maxUses: document.getElementById('cfg-maxuses').value,
+    photoInterval: parseInt(document.getElementById('cfg-photo').value) || 60,
+    maxUses: parseInt(document.getElementById('cfg-maxuses').value) || 999,
     expiryHours: parseInt(document.getElementById('cfg-expiry')?.value||'48'),
     expiresAt: (()=>{ const h=parseInt(document.getElementById('cfg-expiry')?.value||'48'); return h>0 ? new Date(Date.now()+h*3600000).toISOString() : null; })(),
-    expiryDays: parseInt(document.getElementById('cfg-expiry')?.value||'30'),
-    expiresAt: (()=>{ const d=parseInt(document.getElementById('cfg-expiry')?.value||'30'); return d>0 ? new Date(Date.now()+d*86400000).toISOString() : null; })(),
-    email: document.getElementById('cfg-email').value,
-    cc: document.getElementById('cfg-cc').value,
     createdAt: new Date().toISOString(),
     id: Date.now()
   };
+  console.log('Config being sent:', {role:config.role, questions:config.questions, focus:config.focus});
 
   // Save to localStorage for dashboard history
   const configs = JSON.parse(localStorage.getItem('interview_configs')||'[]');

@@ -617,18 +617,24 @@ function startSimpleCamCheck(){
               for(let i=0; i<d.length; i+=4) b += (d[i]+d[i+1]+d[i+2])/3;
               const avg = Math.round(b/(d.length/4));
               console.log('Brightness check:', avg, '| step:', currentStep);
-              if(avg < 25){ // Black/covered camera (36 = camera icon, real face = 100+)
+              if(avg < 18){ // Truly black = covered camera. Camera icon = ~36. Face = 100+
                 window._darkFrameCount = (window._darkFrameCount||0) + 1;
                 console.warn('Dark frame #'+window._darkFrameCount+' brightness:'+avg);
                 // Show warning on first dark frame, trigger camBad after 2
-                if(window._darkFrameCount === 1 && currentStep === 3){
-                  // Show as TOP BANNER (same as face warning) for visibility
-                  showFaceWarning('🚨 <strong>Camera covered/blocked!</strong> Please uncover your camera immediately. Recording paused.');
-                  const introWarn = document.getElementById('intro-cam-warning');
-                  if(introWarn){
-                    introWarn.style.cssText = 'display:block!important;background:#dc2626;color:#fff;border-radius:8px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:12px;border:none';
-                    introWarn.innerHTML = '🚨 <strong>Camera covered!</strong> Please uncover your camera immediately.';
-                  }
+                if(window._darkFrameCount >= 1 && currentStep === 3){
+                  // Beep immediately
+                  try{
+                    const a=new AudioContext();
+                    const o=a.createOscillator();
+                    const g=a.createGain();
+                    o.connect(g);g.connect(a.destination);
+                    o.frequency.value=880;
+                    g.gain.setValueAtTime(0.4,a.currentTime);
+                    g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.5);
+                    o.start();o.stop(a.currentTime+0.5);
+                  }catch(e){}
+                  // Show TOP BANNER immediately
+                  showFaceWarning('🚨 <strong>Camera covered!</strong> Please uncover your camera. Recording paused.');
                 }
                 if(window._darkFrameCount >= 2){
                   camBad = true; reason = `Camera covered (brightness:${avg})`;
@@ -2174,7 +2180,8 @@ async function checkClearbit(name){
     // Check name similarity
     const words = nameLower.split(/\s+/).filter(w=>w.length>2);
     const matchScore = words.filter(w=>topLower.includes(w)).length / Math.max(words.length,1);
-    if(nameLower.length >= 3 && (chScore >= 0.7 || topLower.includes(nameLower))){
+    // Minimum 4 chars AND company name must contain full typed text
+    if(nameLower.length >= 4 && topLower.includes(nameLower)){
       return {found:true, name:top.name, domain:top.domain, logo:top.logo};
     }
     return {found:false, closest:top.name};
