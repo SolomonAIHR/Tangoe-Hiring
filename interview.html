@@ -369,7 +369,18 @@ async function loadConfig(){
         document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f6fb;font-family:sans-serif;"><div style="text-align:center;padding:40px;max-width:420px"><div style="font-size:48px;margin-bottom:16px">🔒</div><div style="font-size:22px;font-weight:700;color:#0f1117;margin-bottom:8px">Link Deactivated</div><div style="font-size:15px;color:#6b7280;line-height:1.6">This interview link has been deactivated by the recruiter.<br/><br/>Please contact <strong style="color:#0057ff">taindia@tangoe.com</strong> for more information.</div><div style="margin-top:24px;font-size:13px;color:#9ca3af;">Tangoe AI Hiring System</div></div></div>';
         return;
       }
-      if(r.ok){ config = await r.json(); return; }
+      if(r.ok){ 
+      config = await r.json(); 
+      // Ensure questions is always a valid number
+      if(!config.questions || isNaN(parseInt(config.questions))){
+        config.questions = 6; // safe default
+        console.warn('config.questions was invalid, defaulting to 6');
+      } else {
+        config.questions = parseInt(config.questions);
+      }
+      console.log('Config loaded with questions:', config.questions);
+      return; 
+    }
     }catch(e){ console.warn('get-jd error',e); }
   }
 
@@ -1019,7 +1030,10 @@ function resetNoFaceCountdown(){
 
 function showFaceWarning(msg){
   const w=document.getElementById('face-warning');
-  if(w){ w.style.display='block'; w.innerHTML=msg; }
+  if(w){ 
+    w.style.cssText='display:block!important;position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:99999!important;background:#dc2626!important;color:#fff!important;padding:16px 20px!important;font-size:15px!important;font-weight:700!important;text-align:center!important';
+    w.innerHTML=msg; 
+  }
 }
 
 function hideFaceWarning(){
@@ -2160,7 +2174,7 @@ async function checkClearbit(name){
     // Check name similarity
     const words = nameLower.split(/\s+/).filter(w=>w.length>2);
     const matchScore = words.filter(w=>topLower.includes(w)).length / Math.max(words.length,1);
-    if(matchScore >= 0.4 || topLower.includes(nameLower) || nameLower.includes(topLower.split(' ')[0])){
+    if(nameLower.length >= 3 && (chScore >= 0.7 || topLower.includes(nameLower))){
       return {found:true, name:top.name, domain:top.domain, logo:top.logo};
     }
     return {found:false, closest:top.name};
