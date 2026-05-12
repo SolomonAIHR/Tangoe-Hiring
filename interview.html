@@ -560,124 +560,114 @@ function startSimpleCamCheck(){
 
   _camCheckInterval = setInterval(()=>{
     if(typeof currentStep === 'undefined' || currentStep < 3) return;
-    // Don't check camera during review step or after done
-    const reviewStep = document.getElementById('s4r');
-    if(reviewStep && reviewStep.style.display !== 'none') return;
-    if(currentStep >= 5) return;
 
     let camBad = false;
     let reason = '';
 
-    // Check 1: stream gone
-    if(!stream){ camBad = true; reason = 'Camera not found'; }
-    else {
+    // ── CHECK 1: Stream/track ended (camera physically disabled) ──────────
+    if(!stream){
+      camBad = true; reason = 'No camera stream';
+    } else {
       const tracks = stream.getVideoTracks();
-      if(!tracks.length){ camBad = true; reason = 'Camera not found'; }
+      if(!tracks.length){ camBad = true; reason = 'No video tracks'; }
       else if(tracks[0].readyState === 'ended'){ camBad = true; reason = 'Camera disconnected'; }
       else if(!tracks[0].enabled){ camBad = true; reason = 'Camera disabled'; }
       else {
-        // Black frame = face not visible
-        try{
-          // Try ALL video elements
-          const videos = ['intro-preview','cam-video2','cam-video']
-            .map(id => document.getElementById(id))
-            .filter(v => v && v.srcObject);
-          
-          let checked = false;
-          for(const v of videos){
-            const c = document.createElement('canvas');
-            c.width = 64; c.height = 64;
-            const ctx = c.getContext('2d');
-            ctx.drawImage(v, 0, 0, 64, 64);
-            const d = ctx.getImageData(0, 0, 64, 64).data;
-            let b = 0;
-            for(let i=0; i<d.length; i+=4) b += (d[i]+d[i+1]+d[i+2])/3;
-            const avg = Math.round(b/(d.length/4));
-            // Only flag if consistently dark (not a momentary glitch)
-            if(avg < 20){ // Only truly black/covered camera (not dim lighting)
-              window._darkFrameCount = (window._darkFrameCount||0) + 1;
-              if(window._darkFrameCount >= 5){ // 5 consecutive dark frames = real issue
-                camBad = true;
-                reason = `Camera covered (brightness:${avg})`;
+        // ── CHECK 2: Black frame (only during video intro step 3) ──────────
+        // During interview (step 4), skip brightness check — candidate is typing
+        if(currentStep === 3){
+          try{
+            // Find the active video element with actual stream
+            const v = document.getElementById('intro-preview');
+            if(v && v.srcObject){
+              const c = document.createElement('canvas');
+              c.width = 64; c.height = 64;
+              const ctx = c.getContext('2d');
+              ctx.drawImage(v, 0, 0, 64, 64);
+              const d = ctx.getImageData(0, 0, 64, 64).data;
+              let b = 0;
+              for(let i=0; i<d.length; i+=4) b += (d[i]+d[i+1]+d[i+2])/3;
+              const avg = Math.round(b/(d.length/4));
+              console.log('Brightness [intro-preview]:', avg);
+              if(avg < 15){ // Only truly black — shutter closed
+                window._darkFrameCount = (window._darkFrameCount||0) + 1;
+                if(window._darkFrameCount >= 3){
+                  camBad = true; reason = `Camera covered (brightness:${avg})`;
+                }
+              } else {
+                window._darkFrameCount = 0;
               }
-            } else {
-              window._darkFrameCount = 0; // reset on any normal frame
             }
-            checked = true;
-            break;
-          }
-          if(!checked) console.warn('No video element found with srcObject');
-        }catch(e){ console.warn('Brightness check error:', e); }
+          }catch(e){ console.warn('Brightness check error:', e); }
+        }
       }
     }
 
-    const GRACE = 30; // 30 seconds grace for BOTH intro and interview
-
     if(camBad){
       _camOffSeconds++;
-      _camGoodSeconds = 0; // reset good counter
-      console.warn('Camera:', reason, '| seconds:', _camOffSeconds);
+      _camGoodSeconds = 0;
+      console.warn('Camera issue:', reason, '| seconds:', _camOffSeconds);
 
-      // ── BEEP every 5 seconds (not every second) ──────────────────
+      // Beep every 5 seconds
       if(_camOffSeconds % 5 === 1){
         try{
           const actx = new AudioContext();
           const osc = actx.createOscillator();
           const gain = actx.createGain();
           osc.connect(gain); gain.connect(actx.destination);
-          osc.frequency.value = _camOffSeconds >= GRACE ? 1200 : 880;
+          osc.frequency.value = 880;
           gain.gain.setValueAtTime(0.3, actx.currentTime);
           gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.3);
           osc.start(); osc.stop(actx.currentTime + 0.3);
         }catch(e){}
       }
 
-      const remaining = Math.max(0, GRACE - _camOffSeconds);
+      const remaining = Math.max(0, 30 - _camOffSeconds);
 
-      // ── STEP 3 (Video Intro) ───────────────────────────────────────
+      // ── STEP 3: Video intro — warn + pause recording + terminate after 30s
       if(currentStep === 3){
         const introWarn = document.getElementById('intro-cam-warning');
         if(introWarn){
           introWarn.style.cssText = 'display:block!important;background:#dc2626;color:#fff;border-radius:8px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:12px;border:none';
-          introWarn.innerHTML = `🚨 <strong>Camera not visible!</strong> Please uncover your camera. Recording paused.`;
+          introWarn.innerHTML = `🚨 <strong>Camera covered/blocked!</strong> Please uncover camera. ${remaining > 0 ? `Terminating in <strong>${remaining}s</strong>` : 'Terminating now...'}`;
         }
         if(introRecorder && introRecorder.state === 'recording'){
           introRecorder.pause();
           const stopBtn = document.getElementById('intro-stop-btn');
-          if(stopBtn) stopBtn.innerHTML = '⏸ Paused — show face to resume';
+          if(stopBtn) stopBtn.innerHTML = '⏸ Paused — uncover camera';
         }
-        // NO auto-terminate during video intro
-      }
-
-      // ── STEP 4── STEP 4 (Interview) ─────────────────────────────────────────
-      else if(currentStep === 4){
-        // Disable answer input
-        const inp = document.getElementById('ans');
-        if(inp) inp.disabled = true;
-        const btn = document.getElementById('send-btn');
-        if(btn){ btn.disabled = true; btn.textContent = '⚠️ Camera required'; }
-
-        showFaceWarning(`🚨 <strong>Camera screen is black — face not visible!</strong> Please look at your camera now.${remaining > 0 ? ` Interview terminates in <strong style="font-size:18px">${remaining}s</strong>` : ' Terminating now...'}`);
-        if(_camOffSeconds >= GRACE){
+        if(_camOffSeconds >= 30){
           clearInterval(_camCheckInterval);
           _camCheckInterval = null;
           autoCloseInterview();
         }
       }
 
-    } else {
-      // ── CAMERA OK — face visible ───────────────────────────────────
-      if(_camOffSeconds > 0){
-        console.log('Face restored after', _camOffSeconds, 'seconds');
-        tabSwitchCount++; // flag the interruption even if restored
+      // ── STEP 4: Interview — only terminate if camera track ended (not brightness)
+      else if(currentStep === 4){
+        if(reason === 'Camera disconnected' || reason === 'No camera stream' || reason === 'Camera disabled'){
+          const inp = document.getElementById('ans');
+          if(inp) inp.disabled = true;
+          const btn = document.getElementById('send-btn');
+          if(btn){ btn.disabled = true; btn.textContent = '⚠️ Camera required'; }
+          showFaceWarning(`🚨 <strong>Camera disconnected!</strong> Please reconnect camera. Interview terminates in <strong>${remaining}s</strong>`);
+          if(_camOffSeconds >= 30){
+            clearInterval(_camCheckInterval);
+            _camCheckInterval = null;
+            autoCloseInterview();
+          }
+        }
+      }
 
-        // Resume recording in intro
+    } else {
+      // Camera OK
+      if(_camOffSeconds > 0){
+        console.log('Camera restored after', _camOffSeconds, 'sec');
         if(currentStep === 3 && introRecorder && introRecorder.state === 'paused'){
           introRecorder.resume();
           const stopBtn = document.getElementById('intro-stop-btn');
           if(stopBtn) stopBtn.innerHTML = '⏹ Stop recording';
         }
-        // Re-enable input in interview
         if(currentStep === 4){
           const inp = document.getElementById('ans');
           if(inp) inp.disabled = false;
@@ -685,23 +675,16 @@ function startSimpleCamCheck(){
           if(btn){ btn.disabled = false; btn.textContent = 'Send →'; }
         }
       }
-
       _camOffSeconds = 0;
       _camGoodSeconds = (_camGoodSeconds||0) + 1;
-
-      // Only hide warning after face has been visible for 2 consecutive seconds
       if(_camGoodSeconds >= 2){
         const introWarn = document.getElementById('intro-cam-warning');
-        if(introWarn && introWarn.style.display !== 'none'){
-          introWarn.style.display = 'none';
-          introWarn.innerHTML = '';
-        }
+        if(introWarn && introWarn.style.display !== 'none'){ introWarn.style.display='none'; }
         hideFaceWarning();
       }
     }
   }, 1000);
 }
-
 // Tab switch detection
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){
@@ -907,73 +890,111 @@ let faceWarningCount = 0;
 let faceDetectionInterval = null;
 const NO_FACE_LIMIT = 30; // seconds before auto-terminate
 
+// ── FACE DETECTION — Browser Native API + Black Frame ───────────────────
+let faceDetectorAPI = null;
+let faceDetectionSupported = false;
+
 async function loadFaceModels(){
-  const modelUrls = [
-    'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights',
-    'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model'
-  ];
-  for(const url of modelUrls){
+  // Try browser native FaceDetector API first (Chrome/Edge, no CDN needed)
+  if('FaceDetector' in window){
     try{
-      await faceapi.nets.tinyFaceDetector.loadFromUri(url);
-      console.log('Face models loaded from:', url);
+      faceDetectorAPI = new FaceDetector({fastMode: true, maxDetectedFaces: 5});
+      faceDetectionSupported = true;
+      console.log('✅ Browser native FaceDetector available');
       return true;
-    }catch(e){ console.warn('Failed to load from', url, e); }
+    }catch(e){ console.warn('Native FaceDetector failed:', e); }
   }
-  console.warn('Face detection unavailable — using black frame detection only');
+  // Fallback: try face-api.js from CDN
+  if(typeof faceapi !== 'undefined'){
+    const urls = [
+      'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights',
+      'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model'
+    ];
+    for(const url of urls){
+      try{
+        await faceapi.nets.tinyFaceDetector.loadFromUri(url);
+        faceDetectionSupported = true;
+        console.log('✅ face-api models loaded from:', url);
+        return true;
+      }catch(e){ console.warn('CDN failed:', url); }
+    }
+  }
+  console.warn('⚠️ Face detection unavailable — black frame detection only');
   return false;
+}
+
+async function detectFaces(videoEl){
+  if(!videoEl || !videoEl.srcObject) return null;
+  // Method 1: Browser native FaceDetector
+  if(faceDetectorAPI){
+    try{
+      const faces = await faceDetectorAPI.detect(videoEl);
+      return faces.length;
+    }catch(e){}
+  }
+  // Method 2: face-api.js
+  if(typeof faceapi !== 'undefined' && faceapi.nets?.tinyFaceDetector?.isLoaded){
+    try{
+      const det = await faceapi.detectAllFaces(videoEl,
+        new faceapi.TinyFaceDetectorOptions({inputSize:224, scoreThreshold:0.4}));
+      return det.length;
+    }catch(e){}
+  }
+  return null; // detection unavailable
 }
 
 async function startFaceDetection(){
   if(faceDetectionActive) return;
-  const loaded = await loadFaceModels();
-  if(!loaded) return;
+  await loadFaceModels();
   faceDetectionActive = true;
-  // Run interval regardless — black frame detection works without models
+
   faceDetectionInterval = setInterval(async ()=>{
     if(!faceDetectionActive) return;
+    // Only run during interview step 4
+    if(currentStep !== 4) return;
+
+    const videoEl = document.getElementById('cam-video2') || document.getElementById('cam-video');
+    if(!videoEl || !videoEl.srcObject) return;
+
+    // ── CHECK 1: Black frame ─────────────────────────────────────────
     try{
-      const videoEl = document.getElementById('cam-video2') || document.getElementById('cam-video');
-      if(!videoEl || !videoEl.srcObject) return;
-
-      // ✅ BLACK FRAME DETECTION — detect shutter/covered camera
-      try{
-        const canvas = document.createElement('canvas');
-        canvas.width = 64; canvas.height = 64;
-        const ctx2d = canvas.getContext('2d');
-        ctx2d.drawImage(videoEl, 0, 0, 64, 64);
-        const pixels = ctx2d.getImageData(0, 0, 64, 64).data;
-        let totalBrightness = 0;
-        for(let i=0; i<pixels.length; i+=4){
-          totalBrightness += (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
-        }
-        const avgBrightness = totalBrightness / (pixels.length/4);
-        if(avgBrightness < 20){ // Only truly black = covered camera
-          tabSwitchCount++;
-          showFaceWarning('🚨 <strong>Camera appears to be covered or blocked!</strong> Please uncover your camera immediately. Interview will terminate in <span id="face-countdown">30</span>s');
-          startNoFaceCountdown();
-          return;
-        }
-      }catch(e2){}
-
-      // Only run face detection if models are loaded
-      if(faceapi.nets.tinyFaceDetector.isLoaded){
-        const detections = await faceapi.detectAllFaces(
-          videoEl, new faceapi.TinyFaceDetectorOptions({inputSize:224, scoreThreshold:0.4})
-        );
-        if(detections.length === 0){
-          startNoFaceCountdown();
-        } else if(detections.length > 1){
-          faceWarningCount++;
-          tabSwitchCount++;
-          showFaceWarning(`⚠️ Multiple faces detected (${faceWarningCount}x) — Only candidate should be visible. Flagged.`);
-          resetNoFaceCountdown();
-        } else {
-          resetNoFaceCountdown();
-          hideFaceWarning();
-        }
+      const c = document.createElement('canvas');
+      c.width = 64; c.height = 64;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(videoEl, 0, 0, 64, 64);
+      const d = ctx.getImageData(0,0,64,64).data;
+      let b = 0;
+      for(let i=0;i<d.length;i+=4) b+=(d[i]+d[i+1]+d[i+2])/3;
+      const avg = Math.round(b/(d.length/4));
+      if(avg < 15){
+        // Truly black screen — camera covered
+        startNoFaceCountdown();
+        showFaceWarning(`🚨 <strong>Camera appears covered!</strong> Please uncover camera. Terminating in <span id="face-countdown">${noFaceSeconds}</span>s`);
+        return;
       }
     }catch(e){}
-  }, 3000);
+
+    // ── CHECK 2: Face detection ──────────────────────────────────────
+    const faceCount = await detectFaces(videoEl);
+    if(faceCount === null){
+      // Detection unavailable — reset countdown (give benefit of doubt)
+      resetNoFaceCountdown();
+      hideFaceWarning();
+      return;
+    }
+    if(faceCount === 0){
+      startNoFaceCountdown();
+    } else if(faceCount > 1){
+      faceWarningCount++;
+      tabSwitchCount++;
+      showFaceWarning(`⚠️ Multiple faces detected (${faceWarningCount}x) — Only candidate should be visible.`);
+      resetNoFaceCountdown();
+    } else {
+      // Face visible — all good
+      resetNoFaceCountdown();
+      hideFaceWarning();
+    }
+  }, 2000); // check every 2 seconds
 }
 
 function startNoFaceCountdown(){
