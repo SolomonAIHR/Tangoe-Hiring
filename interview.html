@@ -584,23 +584,38 @@ function startSimpleCamCheck(){
             const v = currentStep === 3
               ? document.getElementById('intro-preview')
               : document.getElementById('cam-video2') || document.getElementById('cam-video');
-            if(v && v.srcObject && v.videoWidth > 0){
+            if(v && v.srcObject){
               const c = document.createElement('canvas');
               c.width = 64; c.height = 64;
-              const ctx = c.getContext('2d');
-              ctx.drawImage(v, 0, 0, 64, 64);
-              const d = ctx.getImageData(0, 0, 64, 64).data;
+              const ctx2 = c.getContext('2d');
+              try{ ctx2.drawImage(v, 0, 0, 64, 64); }catch(e){ console.warn('drawImage failed:', e); }
+              const d = ctx2.getImageData(0, 0, 64, 64).data;
               let b = 0;
               for(let i=0; i<d.length; i+=4) b += (d[i]+d[i+1]+d[i+2])/3;
               const avg = Math.round(b/(d.length/4));
-              console.log('Brightness [intro-preview]:', avg);
-              if(avg < 15){ // Only truly black — shutter closed
+              console.log('Brightness check:', avg, '| step:', currentStep);
+              if(avg < 20){ // Black/covered camera
                 window._darkFrameCount = (window._darkFrameCount||0) + 1;
-                if(window._darkFrameCount >= 3){
+                console.warn('Dark frame #'+window._darkFrameCount+' brightness:'+avg);
+                // Show warning on first dark frame, trigger camBad after 2
+                if(window._darkFrameCount === 1 && currentStep === 3){
+                  // Immediate warning on step 3
+                  const introWarn = document.getElementById('intro-cam-warning');
+                  if(introWarn){
+                    introWarn.style.cssText = 'display:block!important;background:#dc2626;color:#fff;border-radius:8px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:12px;border:none';
+                    introWarn.innerHTML = '🚨 <strong>Camera covered!</strong> Please uncover your camera immediately.';
+                  }
+                }
+                if(window._darkFrameCount >= 2){
                   camBad = true; reason = `Camera covered (brightness:${avg})`;
                 }
               } else {
                 window._darkFrameCount = 0;
+                // Clear immediate warning if camera restored
+                if(currentStep === 3){
+                  const introWarn = document.getElementById('intro-cam-warning');
+                  if(introWarn && introWarn.style.display !== 'none') introWarn.style.display = 'none';
+                }
               }
             }
           }catch(e){ console.warn('Brightness check error:', e); }
@@ -613,8 +628,8 @@ function startSimpleCamCheck(){
       _camGoodSeconds = 0;
       console.warn('Camera issue:', reason, '| seconds:', _camOffSeconds);
 
-      // Beep every 5 seconds
-      if(_camOffSeconds % 5 === 1){
+      // Beep every second during camera issue
+      if(_camOffSeconds >= 1){
         try{
           const actx = new AudioContext();
           const osc = actx.createOscillator();
@@ -648,19 +663,29 @@ function startSimpleCamCheck(){
         }
       }
 
-      // ── STEP 4: Interview — only terminate if camera track ended (not brightness)
+      // ── STEP 4: Interview
       else if(currentStep === 4){
+        // Track ended = hard terminate
         if(reason === 'Camera disconnected' || reason === 'No camera stream' || reason === 'Camera disabled'){
           const inp = document.getElementById('ans');
           if(inp) inp.disabled = true;
           const btn = document.getElementById('send-btn');
           if(btn){ btn.disabled = true; btn.textContent = '⚠️ Camera required'; }
-          showFaceWarning(`🚨 <strong>Camera disconnected!</strong> Please reconnect camera. Interview terminates in <strong>${remaining}s</strong>`);
-          if(_camOffSeconds >= 30){
-            clearInterval(_camCheckInterval);
-            _camCheckInterval = null;
-            autoCloseInterview();
-          }
+          showFaceWarning(`🚨 <strong>Camera disconnected!</strong> Please reconnect. Terminating in <strong>${remaining}s</strong>`);
+          if(_camOffSeconds >= 30){ clearInterval(_camCheckInterval); _camCheckInterval = null; autoCloseInterview(); }
+        }
+        // Black frame = camera covered during interview
+        else if(reason && reason.includes('Camera covered')){
+          window._step4BlackFrame = (window._step4BlackFrame||0) + 1;
+          console.warn('Step4 black frame #'+window._step4BlackFrame);
+          // ✅ Show warning IMMEDIATELY on first detection
+          const inp = document.getElementById('ans');
+          if(inp) inp.disabled = true;
+          const btn = document.getElementById('send-btn');
+          if(btn){ btn.disabled = true; btn.textContent = '⚠️ Camera required'; }
+          showFaceWarning(`🚨 <strong>Camera covered!</strong> Please uncover camera immediately. ${remaining > 0 ? `Terminating in <strong>${remaining}s</strong>` : 'Terminating now...'}`);
+          // Terminate only after 30 seconds
+          if(_camOffSeconds >= 30){ clearInterval(_camCheckInterval); _camCheckInterval = null; autoCloseInterview(); }
         }
       }
 
@@ -680,6 +705,7 @@ function startSimpleCamCheck(){
           if(btn){ btn.disabled = false; btn.textContent = 'Send →'; }
         }
       }
+      window._step4BlackFrame = 0; // reset black frame counter when camera good
       _camOffSeconds = 0;
       _camGoodSeconds = (_camGoodSeconds||0) + 1;
       if(_camGoodSeconds >= 2){
@@ -705,13 +731,28 @@ document.addEventListener('visibilitychange',()=>{
       addBubble(`⚠️ Tab switch detected (${tabSwitchCount}x). Please stay on this page during your interview.`,'warn');
     }
     // During video intro
-    else if(introRecorder && introRecorder.state === 'recording'){
+    else if(currentStep === 3){
       tabSwitchCount++;
+      // Pause recording on tab switch
+      if(introRecorder && introRecorder.state === 'recording'){
+        introRecorder.pause();
+        const stopBtn = document.getElementById('intro-stop-btn');
+        if(stopBtn) stopBtn.innerHTML = '⏸ Paused — tab switch detected';
+      }
       const w = document.getElementById('intro-cam-warning');
       if(w){
-        w.style.display='block';
-        w.innerHTML=`⚠️ <strong>Tab switch detected (${tabSwitchCount}x)</strong> — Please stay on this page during your video introduction. This has been flagged.`;
+        w.style.cssText = 'display:block!important;background:#dc2626;color:#fff;border-radius:8px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:12px;border:none';
+        w.innerHTML = `🚨 <strong>Tab switch detected (${tabSwitchCount}x)</strong> — Recording paused. Return to this page to resume. This has been flagged.`;
       }
+    }
+  } else {
+    // Candidate came back to tab
+    if(currentStep === 3 && introRecorder && introRecorder.state === 'paused'){
+      introRecorder.resume();
+      const stopBtn = document.getElementById('intro-stop-btn');
+      if(stopBtn) stopBtn.innerHTML = '⏹ Stop recording';
+      const w = document.getElementById('intro-cam-warning');
+      if(w) w.innerHTML = w.innerHTML + ' <span style="color:#fcd34d"> · Recording resumed</span>';
     }
   }
 });
