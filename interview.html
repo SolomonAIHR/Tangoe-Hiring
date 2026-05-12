@@ -774,82 +774,8 @@ function showCameraWarning(msg){
 }
 
 function startCameraMonitor(){
-  setInterval(()=>{
-    if(!stream) return;
-    const videoTrack = stream.getVideoTracks()[0];
-    if(!videoTrack) return;
-
-    // Check if track ended
-    if(videoTrack.readyState === 'ended' || videoTrack.muted){
-      tabSwitchCount++;
-      showCameraWarning('⚠️ <strong>Camera is off</strong> — Please turn your camera back on to continue. This has been flagged in your report.');
-      return;
-    }
-
-    // ✅ BLACK FRAME DETECTION — works on ALL steps
-    // Use any visible video element that has a live stream
-    try{
-      const videoEls = [
-        document.getElementById('intro-preview'),
-        document.getElementById('cam-video2'),
-        document.getElementById('cam-video')
-      ];
-      // Find first video that is playing and has content
-      let activeVideo = null;
-      for(const v of videoEls){
-        if(v && v.readyState >= 2 && v.videoWidth > 0 && !v.paused){
-          activeVideo = v; break;
-        }
-      }
-      // Fallback: use stream's existing video element
-      if(!activeVideo && stream){
-        const tracks = stream.getVideoTracks();
-        if(tracks.length && tracks[0].readyState === 'live'){
-          // Use cam-video as fallback even if paused
-          activeVideo = document.getElementById('cam-video') ||
-                        document.getElementById('cam-video2') ||
-                        document.getElementById('intro-preview');
-        }
-      }
-
-      if(activeVideo){
-        const canvas = document.createElement('canvas');
-        canvas.width = 64; canvas.height = 64;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(activeVideo, 0, 0, 64, 64);
-        const pixels = ctx.getImageData(0, 0, 64, 64).data;
-        let totalBrightness = 0;
-        for(let i = 0; i < pixels.length; i += 4){
-          totalBrightness += (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
-        }
-        const avgBrightness = totalBrightness / (pixels.length / 4);
-        console.log('Camera brightness:', Math.round(avgBrightness));
-
-        if(avgBrightness < 15){
-          tabSwitchCount++;
-          const s3 = document.getElementById('s3');
-          const s4 = document.getElementById('s4');
-          const isIntro = s3 && s3.style.display !== 'none';
-          if(isIntro){
-            const introWarn = document.getElementById('intro-cam-warning');
-            if(introWarn){
-              introWarn.style.display='block';
-              introWarn.innerHTML='🚨 <strong>Camera is blocked/covered!</strong> Please uncover your camera immediately. This has been flagged.';
-            }
-          } else {
-            showFaceWarning('🚨 <strong>Camera blocked/covered detected!</strong> Please uncover your camera. Auto-closing in <span id="face-countdown">30</span>s');
-            startNoFaceCountdown();
-          }
-        } else if(avgBrightness >= 15){
-          // Camera is visible — reset countdown if it was running due to black frame
-          const introWarn = document.getElementById('intro-cam-warning');
-          if(introWarn && introWarn.innerHTML.includes('blocked')){
-            introWarn.style.display='none';
-          }
-        }
-      }
-    }catch(e){ console.warn('Black frame check error:', e); }
-  }, 2000);
+  // Disabled — startSimpleCamCheck handles all camera monitoring
+  console.log('startCameraMonitor disabled — using startSimpleCamCheck');
 }
 
 function attachCameraEndListener(){
