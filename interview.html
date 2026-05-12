@@ -474,9 +474,21 @@ function showBlockedPage(message, reason){
 
 // Config-derived constants (read lazily from config object)
 function getTOTAL_Q(){ 
-  const q = parseInt(config.questions);
+  // Try config.questions first, then URL params as fallback
+  let q = parseInt(config.questions);
+  if(!q || isNaN(q)){
+    // Try to get from URL cfg64 fallback
+    const params = new URLSearchParams(window.location.search);
+    const cfg64 = params.get('cfg64');
+    if(cfg64){
+      try{
+        const decoded = JSON.parse(decodeURIComponent(escape(atob(cfg64))));
+        q = parseInt(decoded.questions);
+      }catch(e){}
+    }
+  }
   const result = (q && q >= 4 && q <= 10) ? q : 6;
-  console.log('getTOTAL_Q called → config.questions:', config.questions, '→ returning:', result);
+  console.log('getTOTAL_Q → config.questions:', config.questions, '→ result:', result);
   return result;
 }
 function getROLE(){ 
@@ -594,12 +606,13 @@ function startSimpleCamCheck(){
               for(let i=0; i<d.length; i+=4) b += (d[i]+d[i+1]+d[i+2])/3;
               const avg = Math.round(b/(d.length/4));
               console.log('Brightness check:', avg, '| step:', currentStep);
-              if(avg < 20){ // Black/covered camera
+              if(avg < 25){ // Black/covered camera (36 = camera icon, real face = 100+)
                 window._darkFrameCount = (window._darkFrameCount||0) + 1;
                 console.warn('Dark frame #'+window._darkFrameCount+' brightness:'+avg);
                 // Show warning on first dark frame, trigger camBad after 2
                 if(window._darkFrameCount === 1 && currentStep === 3){
-                  // Immediate warning on step 3
+                  // Show as TOP BANNER (same as face warning) for visibility
+                  showFaceWarning('🚨 <strong>Camera covered/blocked!</strong> Please uncover your camera immediately. Recording paused.');
                   const introWarn = document.getElementById('intro-cam-warning');
                   if(introWarn){
                     introWarn.style.cssText = 'display:block!important;background:#dc2626;color:#fff;border-radius:8px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:12px;border:none';
@@ -646,10 +659,12 @@ function startSimpleCamCheck(){
 
       // ── STEP 3: Video intro — warn + pause recording + terminate after 30s
       if(currentStep === 3){
+        // Show TOP banner for maximum visibility
+        showFaceWarning(`🚨 <strong>Camera covered!</strong> Please uncover camera immediately. ${remaining > 0 ? `Terminating in <strong>${remaining}s</strong>` : 'Terminating now...'}`);
         const introWarn = document.getElementById('intro-cam-warning');
         if(introWarn){
           introWarn.style.cssText = 'display:block!important;background:#dc2626;color:#fff;border-radius:8px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:12px;border:none';
-          introWarn.innerHTML = `🚨 <strong>Camera covered/blocked!</strong> Please uncover camera. ${remaining > 0 ? `Terminating in <strong>${remaining}s</strong>` : 'Terminating now...'}`;
+          introWarn.innerHTML = `🚨 <strong>Camera covered!</strong> ${remaining > 0 ? `Terminating in <strong>${remaining}s</strong>` : 'Terminating now...'}`;
         }
         if(introRecorder && introRecorder.state === 'recording'){
           introRecorder.pause();
