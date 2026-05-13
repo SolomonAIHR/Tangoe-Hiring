@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Camera Detection Test</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#0f1117;color:#e8eaf0;min-height:100vh;padding:24px}
+h1{font-size:20px;font-weight:700;margin-bottom:4px;color:#fff}
+.sub{font-size:13px;color:#6b7394;margin-bottom:24px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:900px}
+.card{background:#1a1f2e;border:1px solid #232840;border-radius:12px;padding:20px}
+.card-title{font-size:12px;font-weight:600;color:#6b7394;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+video{width:100%;border-radius:8px;background:#000;aspect-ratio:4/3;display:block}
+canvas{display:none}
+.meter{margin-top:12px}
+.meter-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px}
+.meter-val{font-size:28px;font-weight:800;font-family:monospace}
+.meter-bar{height:12px;background:#232840;border-radius:6px;overflow:hidden}
+.meter-fill{height:100%;border-radius:6px;transition:width .1s,background .1s}
+.status{margin-top:12px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600}
+.status.good{background:#052e16;color:#22c97a;border:1px solid #166534}
+.status.warn{background:#431407;color:#fb923c;border:1px solid #9a3412}
+.status.bad{background:#2d0a0a;color:#f87171;border:1px solid #991b1b}
+.log{background:#0a0d14;border:1px solid #232840;border-radius:8px;padding:12px;height:200px;overflow-y:auto;font-family:monospace;font-size:12px;margin-top:12px}
+.log-entry{padding:2px 0;border-bottom:1px solid #1a1f2e}
+.log-entry.warn{color:#fb923c}
+.log-entry.bad{color:#f87171}
+.log-entry.good{color:#22c97a}
+.log-entry.info{color:#60a5fa}
+.threshold-ctrl{display:flex;align-items:center;gap:10px;margin-top:12px}
+.threshold-ctrl label{font-size:12px;color:#6b7394}
+.threshold-ctrl input{width:80px;background:#0a0d14;border:1px solid #232840;border-radius:6px;padding:4px 8px;color:#e8eaf0;font-size:14px;font-family:monospace;text-align:center}
+.btn{padding:8px 16px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-green{background:#16a34a;color:#fff}
+.btn-red{background:#dc2626;color:#fff}
+.btn-blue{background:#0057ff;color:#fff}
+.readings{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
+.reading{background:#0a0d14;border:1px solid #232840;border-radius:8px;padding:10px;text-align:center}
+.reading-val{font-size:22px;font-weight:800;font-family:monospace}
+.reading-label{font-size:10px;color:#6b7394;margin-top:2px}
+</style>
+</head>
+<body>
+<h1>📷 Camera Detection Tester</h1>
+<div class="sub">Real-time brightness and face detection diagnostics for Tangoe Screening</div>
+
+<div class="grid">
+  <!-- LEFT: Live Camera -->
+  <div class="card">
+    <div class="card-title">Live Camera Feed</div>
+    <video id="live-video" autoplay muted playsinline></video>
+    <canvas id="canvas"></canvas>
+
+    <div class="meter" style="margin-top:16px">
+      <div class="meter-label">
+        <span>Brightness</span>
+        <span id="bright-val" class="meter-val" style="font-size:20px">—</span>
+      </div>
+      <div class="meter-bar">
+        <div id="bright-fill" class="meter-fill" style="width:0%;background:#22c97a"></div>
+      </div>
+    </div>
+
+    <div class="readings">
+      <div class="reading">
+        <div class="reading-val" id="val-current">—</div>
+        <div class="reading-label">Current</div>
+      </div>
+      <div class="reading">
+        <div class="reading-val" id="val-min">—</div>
+        <div class="reading-label">Min seen</div>
+      </div>
+      <div class="reading">
+        <div class="reading-val" id="val-max">—</div>
+        <div class="reading-label">Max seen</div>
+      </div>
+    </div>
+
+    <div class="threshold-ctrl">
+      <label>Trigger threshold:</label>
+      <input type="number" id="threshold" value="15" min="5" max="100"/>
+      <button class="btn btn-blue" onclick="updateThreshold()">Apply</button>
+    </div>
+
+    <div id="cam-status" class="status good" style="margin-top:12px">Starting camera...</div>
+  </div>
+
+  <!-- RIGHT: Detection Log -->
+  <div class="card">
+    <div class="card-title">Detection Events</div>
+
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-green" onclick="simulateCover()">🖐 Simulate Cover</button>
+      <button class="btn btn-red" onclick="clearLog()">Clear log</button>
+    </div>
+
+    <div style="font-size:12px;color:#6b7394;margin-bottom:8px">
+      Instructions:
+      <br>1. Watch brightness value with face visible
+      <br>2. Cover camera with hand → see value drop
+      <br>3. Note the exact values → set threshold
+    </div>
+
+    <div class="log" id="event-log">
+      <div class="log-entry info">Waiting for camera...</div>
+    </div>
+
+    <div style="margin-top:12px;padding:12px;background:#0a0d14;border-radius:8px;font-size:12px">
+      <div style="font-weight:600;margin-bottom:6px;color:#60a5fa">📊 Recommended thresholds:</div>
+      <div>Face visible: <span id="rec-face" style="color:#22c97a;font-weight:700">—</span></div>
+      <div>Camera covered: <span id="rec-covered" style="color:#f87171;font-weight:700">—</span></div>
+      <div>Suggested threshold: <span id="rec-threshold" style="color:#fb923c;font-weight:700">—</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Face Detection Status -->
+<div style="max-width:900px;margin-top:20px">
+  <div class="card">
+    <div class="card-title">Face Detection Status</div>
+    <div id="face-status" class="status warn">Checking face detection API...</div>
+    <div id="face-log" class="log" style="height:120px;margin-top:8px">
+      <div class="log-entry info">Initialising...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let stream = null;
+let threshold = 15;
+let minBrightness = 999;
+let maxBrightness = 0;
+let readings = [];
+let faceDetector = null;
+let checkInterval = null;
+
+async function init(){
+  addLog('Requesting camera access...', 'info');
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{width:640,height:480}, audio:false});
+    const v = document.getElementById('live-video');
+    v.srcObject = stream;
+    v.play();
+    addLog('✅ Camera stream active', 'good');
+    document.getElementById('cam-status').textContent = '✅ Camera active — watch brightness values';
+    document.getElementById('cam-status').className = 'status good';
+
+    // Wait for video to load then start checking
+    v.onloadedmetadata = ()=>{
+      addLog(`Video: ${v.videoWidth}x${v.videoHeight}`, 'info');
+      startChecking();
+    };
+    setTimeout(startChecking, 1000); // fallback
+  }catch(e){
+    addLog('❌ Camera error: '+e.message, 'bad');
+    document.getElementById('cam-status').textContent = '❌ Camera denied: '+e.message;
+    document.getElementById('cam-status').className = 'status bad';
+  }
+
+  // Check face detection
+  checkFaceDetection();
+}
+
+function startChecking(){
+  if(checkInterval) return;
+  addLog('Starting brightness monitoring...', 'info');
+
+  checkInterval = setInterval(()=>{
+    const v = document.getElementById('live-video');
+    const canvas = document.getElementById('canvas');
+    if(!v || !v.srcObject) return;
+
+    try{
+      canvas.width = 64; canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(v, 0, 0, 64, 64);
+      const d = ctx.getImageData(0, 0, 64, 64).data;
+      let total = 0;
+      for(let i=0; i<d.length; i+=4){
+        total += (d[i] + d[i+1] + d[i+2]) / 3;
+      }
+      const brightness = Math.round(total / (d.length/4));
+      updateBrightness(brightness);
+    }catch(e){
+      addLog('Canvas error: '+e.message, 'bad');
+    }
+  }, 500); // every 500ms for smooth updates
+}
+
+function updateBrightness(b){
+  // Update display
+  document.getElementById('bright-val').textContent = b;
+  document.getElementById('val-current').textContent = b;
+
+  // Track min/max
+  if(b < minBrightness){ minBrightness = b; document.getElementById('val-min').textContent = b; }
+  if(b > maxBrightness){ maxBrightness = b; document.getElementById('val-max').textContent = b; }
+
+  // Keep last 20 readings
+  readings.push(b);
+  if(readings.length > 20) readings.shift();
+
+  // Color bar
+  const pct = Math.min(100, Math.round(b/255*100));
+  const fill = document.getElementById('bright-fill');
+  fill.style.width = pct+'%';
+
+  const color = b < threshold ? '#ef4444' : b < threshold*2 ? '#fb923c' : '#22c97a';
+  fill.style.background = color;
+
+  // Status
+  const camStatus = document.getElementById('cam-status');
+  if(b < threshold){
+    camStatus.textContent = `🔴 CAMERA COVERED (brightness: ${b} < threshold: ${threshold})`;
+    camStatus.className = 'status bad';
+    addLog(`🔴 COVERED! brightness:${b} threshold:${threshold}`, 'bad');
+  } else if(b < threshold*2){
+    camStatus.textContent = `⚠️ Dim/borderline (brightness: ${b})`;
+    camStatus.className = 'status warn';
+  } else {
+    camStatus.textContent = `✅ Camera clear (brightness: ${b})`;
+    camStatus.className = 'status good';
+  }
+
+  // Update recommendations every 5 readings
+  if(readings.length >= 10){
+    const avg = Math.round(readings.reduce((a,b)=>a+b,0)/readings.length);
+    const min = Math.min(...readings);
+    document.getElementById('rec-face').textContent = avg;
+    document.getElementById('rec-covered').textContent = minBrightness < 50 ? minBrightness : '(cover camera to measure)';
+    const suggested = minBrightness < 50 ? Math.round(minBrightness * 1.5) : '?';
+    document.getElementById('rec-threshold').textContent = suggested;
+  }
+}
+
+function updateThreshold(){
+  threshold = parseInt(document.getElementById('threshold').value) || 15;
+  addLog(`Threshold updated to: ${threshold}`, 'info');
+}
+
+async function checkFaceDetection(){
+  const faceLog = document.getElementById('face-log');
+  const faceStatus = document.getElementById('face-status');
+
+  // Test native FaceDetector
+  if('FaceDetector' in window){
+    try{
+      faceDetector = new FaceDetector({fastMode:true, maxDetectedFaces:5});
+      faceStatus.textContent = '✅ Native FaceDetector API available (Chrome/Edge)';
+      faceStatus.className = 'status good';
+      addFaceLog('✅ Native FaceDetector API ready', 'good');
+
+      // Start face detection loop
+      setInterval(async ()=>{
+        const v = document.getElementById('live-video');
+        if(!v || !v.srcObject) return;
+        try{
+          const faces = await faceDetector.detect(v);
+          addFaceLog(`👤 Faces detected: ${faces.length}`, faces.length===1?'good':faces.length===0?'warn':'bad');
+        }catch(e){ addFaceLog('Detection error: '+e.message, 'bad'); }
+      }, 2000);
+      return;
+    }catch(e){
+      addFaceLog('Native FaceDetector failed: '+e.message, 'bad');
+    }
+  } else {
+    addFaceLog('❌ Native FaceDetector NOT available in this browser', 'bad');
+    addFaceLog('ℹ️ Works in Chrome/Edge. Use Firefox? Face detection unavailable.', 'info');
+    faceStatus.textContent = '❌ FaceDetector API not available — brightness detection only';
+    faceStatus.className = 'status warn';
+  }
+
+  // Test face-api.js
+  if(typeof faceapi !== 'undefined'){
+    addFaceLog('Trying face-api.js CDN...', 'info');
+    try{
+      await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights');
+      addFaceLog('✅ face-api.js loaded', 'good');
+      faceStatus.textContent = '✅ face-api.js loaded as fallback';
+      faceStatus.className = 'status good';
+    }catch(e){
+      addFaceLog('❌ face-api.js CDN failed: '+e.message, 'bad');
+    }
+  }
+}
+
+function addLog(msg, type='info'){
+  const log = document.getElementById('event-log');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + type;
+  const time = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  entry.textContent = `[${time}] ${msg}`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+  // Keep max 50 entries
+  while(log.children.length > 50) log.removeChild(log.firstChild);
+}
+
+function addFaceLog(msg, type='info'){
+  const log = document.getElementById('face-log');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + type;
+  const time = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  entry.textContent = `[${time}] ${msg}`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+  while(log.children.length > 30) log.removeChild(log.firstChild);
+}
+
+function simulateCover(){
+  addLog('🖐 Simulating camera cover...', 'warn');
+  // Temporarily draw black canvas
+  const v = document.getElementById('live-video');
+  const canvas = document.getElementById('canvas');
+  canvas.width = 64; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0,0,64,64);
+  updateBrightness(0);
+  setTimeout(()=>addLog('Simulation done — cover your actual camera to measure real values', 'info'), 500);
+}
+
+function clearLog(){
+  document.getElementById('event-log').innerHTML = '';
+  minBrightness = 999; maxBrightness = 0; readings = [];
+  document.getElementById('val-min').textContent = '—';
+  document.getElementById('val-max').textContent = '—';
+  addLog('Log cleared — fresh readings', 'info');
+}
+
+// Start
+init();
+</script>
+</body>
+</html>
