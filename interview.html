@@ -977,8 +977,16 @@ async function startFaceDetection(){
     if(avgBright !== null && isCameraCovered(avgBright)){
       // Camera covered — adaptive threshold = 40% of calibrated baseline
       console.warn(`Face-check: camera covered (brightness:${avgBright} threshold:${_coveredThreshold})`);
-      startNoFaceCountdown();
-      showFaceWarning(`🚨 <strong>Camera appears covered!</strong> Please uncover camera. Terminating in <span id="face-countdown">${noFaceSeconds}</span>s`);
+      if(currentStep === 4){
+        // Step 4: use noFace countdown system
+        noFaceSeconds = noFaceSeconds > 0 ? noFaceSeconds : NO_FACE_LIMIT;
+        startNoFaceCountdown();
+        showFaceWarning(`🚨 <strong>Camera appears covered!</strong> Please uncover camera. Terminating in <span id="face-countdown">${noFaceSeconds}</span>s`);
+      } else {
+        // Step 3: use _camOffSeconds countdown (same as main cam check)
+        const rem3 = Math.max(0, 30 - _camOffSeconds);
+        showFaceWarning(`🚨 <strong>Camera covered!</strong> Please uncover camera immediately. ${rem3 > 0 ? `Terminating in <strong>${rem3}s</strong>` : 'Terminating now...'}`);
+      }
       return;
     }
 
