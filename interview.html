@@ -485,22 +485,15 @@ function showBlockedPage(message, reason){
 
 // Config-derived constants (read lazily from config object)
 function getTOTAL_Q(){ 
-  // Try config.questions first, then URL params as fallback
-  let q = parseInt(config.questions);
-  if(!q || isNaN(q)){
-    // Try to get from URL cfg64 fallback
-    const params = new URLSearchParams(window.location.search);
-    const cfg64 = params.get('cfg64');
-    if(cfg64){
-      try{
-        const decoded = JSON.parse(decodeURIComponent(escape(atob(cfg64))));
-        q = parseInt(decoded.questions);
-      }catch(e){}
-    }
+  // Direct read from config
+  let q = parseInt(config?.questions);
+  console.log('getTOTAL_Q called → raw config.questions:', config?.questions, '→ parsed:', q);
+  if(!q || isNaN(q) || q < 1){
+    console.warn('config.questions invalid, using 6 as default');
+    return 6;
   }
-  const result = (q && q >= 4 && q <= 10) ? q : 6;
-  console.log('getTOTAL_Q → config.questions:', config.questions, '→ result:', result);
-  return result;
+  console.log('getTOTAL_Q returning:', q);
+  return q;
 }
 function getROLE(){ 
   if(config.role && config.role.trim()) return config.role.trim();
@@ -601,13 +594,15 @@ function startSimpleCamCheck(){
       else if(!tracks[0].enabled){ camBad = true; reason = 'Camera disabled'; }
       else {
         // ── CHECK 2: Black frame brightness check ─────────────────────────
-        // Step 3: use intro-preview | Step 4: use cam-video2
         if(currentStep === 3 || currentStep === 4){
           try{
-            const v = currentStep === 3
-              ? document.getElementById('intro-preview')
-              : document.getElementById('cam-video2') || document.getElementById('cam-video');
-            if(v && v.srcObject){
+            // Step 3: only check during ACTIVE recording (not before start)
+            // Step 4: use cam-video2
+            const isRecording = currentStep === 3 && introRecorder && introRecorder.state === 'recording';
+            const v = currentStep === 4
+              ? (document.getElementById('cam-video2') || document.getElementById('cam-video'))
+              : (isRecording ? document.getElementById('intro-preview') : null);
+            if(v && v.srcObject && v.readyState >= 2){
               const c = document.createElement('canvas');
               c.width = 64; c.height = 64;
               const ctx2 = c.getContext('2d');
@@ -621,7 +616,8 @@ function startSimpleCamCheck(){
                 window._darkFrameCount = (window._darkFrameCount||0) + 1;
                 console.warn('Dark frame #'+window._darkFrameCount+' brightness:'+avg);
                 // Show warning on first dark frame, trigger camBad after 2
-                if(window._darkFrameCount >= 1 && currentStep === 3){
+                if(window._darkFrameCount >= 1 && (currentStep === 3 || currentStep === 4)){
+                  window._cameraCovered = true; // flag to prevent face detection clearing banner
                   // Beep immediately
                   try{
                     const a=new AudioContext();
@@ -634,7 +630,7 @@ function startSimpleCamCheck(){
                     o.start();o.stop(a.currentTime+0.5);
                   }catch(e){}
                   // Show TOP BANNER immediately
-                  showFaceWarning('🚨 <strong>Camera covered!</strong> Please uncover your camera. Recording paused.');
+                  showFaceWarning('🚨 <strong>Camera covered!</strong> Please uncover your camera immediately. Recording paused.');
                 }
                 if(window._darkFrameCount >= 2){
                   camBad = true; reason = `Camera covered (brightness:${avg})`;
@@ -709,8 +705,8 @@ function startSimpleCamCheck(){
         // Black frame = camera covered during interview
         else if(reason && reason.includes('Camera covered')){
           window._step4BlackFrame = (window._step4BlackFrame||0) + 1;
+          window._cameraCovered = true;
           console.warn('Step4 black frame #'+window._step4BlackFrame);
-          // ✅ Show warning IMMEDIATELY on first detection
           const inp = document.getElementById('ans');
           if(inp) inp.disabled = true;
           const btn = document.getElementById('send-btn');
@@ -737,7 +733,8 @@ function startSimpleCamCheck(){
           if(btn){ btn.disabled = false; btn.textContent = 'Send →'; }
         }
       }
-      window._step4BlackFrame = 0; // reset black frame counter when camera good
+      window._step4BlackFrame = 0;
+      window._cameraCovered = false; // camera is good again
       _camOffSeconds = 0;
       _camGoodSeconds = (_camGoodSeconds||0) + 1;
       if(_camGoodSeconds >= 3){ // 3 good seconds before clearing warning
@@ -998,9 +995,12 @@ async function startFaceDetection(){
       showFaceWarning(`⚠️ Multiple faces detected (${faceWarningCount}x) — Only candidate should be visible.`);
       resetNoFaceCountdown();
     } else {
-      // Face visible — all good
-      resetNoFaceCountdown();
-      hideFaceWarning();
+      // Face visible — only hide warning if camera is NOT covered
+      // Don't override the camera-covered warning with face detection
+      if(!window._cameraCovered){
+        resetNoFaceCountdown();
+        hideFaceWarning();
+      }
     }
   }, 2000); // check every 2 seconds
 }
@@ -2252,7 +2252,7 @@ async function verifyCompany(name){
     detail.style.background = '#f0fdf4';
     detail.style.border = '1px solid #86efac';
     detail.style.color = '#15803d';
-    detail.textContent = `✓ ${name} — recognised company`;
+    detail.textContent = `✓ ${known.matched || name} — recognised company`;
     return;
   }
 
