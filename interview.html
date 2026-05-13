@@ -561,6 +561,17 @@ let TOTAL_Q = 6, ROLE = 'QA Engineer', JD = '', PHOTO_INTERVAL = 60000;
 let chat=[], tx=[], qCount=0, cur={};
 let stream=null, photoTimer=null, photos=[];
 let typingLog=[], answerStartTime=0, lastKeyTime=0, pasteDetected=false, totalKeystrokes=0;
+
+// ── ADAPTIVE BRIGHTNESS THRESHOLD ────────────────────────────────────────
+// Calibrated per-device after camera starts. Never use a fixed number.
+// baseline = average brightness of the device's camera with face visible
+// coveredThreshold = 40% of baseline (covers shutter, tape, finger, dark room)
+let _brightnessBaseline = null;   // set after calibration
+let _coveredThreshold = null;     // set after calibration
+let _calibrationSamples = [];     // collect samples during calibration
+const CALIBRATION_FRAMES = 15;    // number of frames to average for baseline
+const COVERED_RATIO = 0.40;       // threshold = 40% of baseline
+const COVERED_RATIO_MIN = 20;     // floor: never go below 20 (pitch-black room edge case)
 let tabSwitchCount=0;
 
 // Titles updated after config loads (see async loadConfig block below)
@@ -612,7 +623,7 @@ function startSimpleCamCheck(){
               for(let i=0; i<d.length; i+=4) b += (d[i]+d[i+1]+d[i+2])/3;
               const avg = Math.round(b/(d.length/4));
               console.log('Brightness check:', avg, '| step:', currentStep);
-              if(avg < 18){ // Truly black = covered camera. Camera icon = ~36. Face = 100+
+              if(isCameraCovered(avg)){ // Adaptive: threshold = 40% of calibrated baseline for this device
                 window._darkFrameCount = (window._darkFrameCount||0) + 1;
                 console.warn('Dark frame #'+window._darkFrameCount+' brightness:'+avg);
                 // Show warning on first dark frame, trigger camBad after 2
@@ -961,23 +972,15 @@ async function startFaceDetection(){
       : document.getElementById('cam-video2') || document.getElementById('cam-video');
     if(!videoEl || !videoEl.srcObject) return;
 
-    // ── CHECK 1: Black frame ─────────────────────────────────────────
-    try{
-      const c = document.createElement('canvas');
-      c.width = 64; c.height = 64;
-      const ctx = c.getContext('2d');
-      ctx.drawImage(videoEl, 0, 0, 64, 64);
-      const d = ctx.getImageData(0,0,64,64).data;
-      let b = 0;
-      for(let i=0;i<d.length;i+=4) b+=(d[i]+d[i+1]+d[i+2])/3;
-      const avg = Math.round(b/(d.length/4));
-      if(avg < 15){
-        // Truly black screen — camera covered
-        startNoFaceCountdown();
-        showFaceWarning(`🚨 <strong>Camera appears covered!</strong> Please uncover camera. Terminating in <span id="face-countdown">${noFaceSeconds}</span>s`);
-        return;
-      }
-    }catch(e){}
+    // ── CHECK 1: Black frame (adaptive threshold) ─────────────────────
+    const avgBright = getSampleBrightness(videoEl);
+    if(avgBright !== null && isCameraCovered(avgBright)){
+      // Camera covered — adaptive threshold = 40% of calibrated baseline
+      console.warn(`Face-check: camera covered (brightness:${avgBright} threshold:${_coveredThreshold})`);
+      startNoFaceCountdown();
+      showFaceWarning(`🚨 <strong>Camera appears covered!</strong> Please uncover camera. Terminating in <span id="face-countdown">${noFaceSeconds}</span>s`);
+      return;
+    }
 
     // ── CHECK 2: Face detection ──────────────────────────────────────
     const faceCount = await detectFaces(videoEl);
@@ -1282,13 +1285,70 @@ function goBackToDetails(){
   setStep(1);
 }
 
+// ── ADAPTIVE CALIBRATION ─────────────────────────────────────────────────
+// Called once after camera starts. Samples brightness over ~3s, sets baseline
+// and covered threshold relative to THIS device's camera output.
+function calibrateBrightness(videoEl){
+  _calibrationSamples = [];
+  _brightnessBaseline = null;
+  _coveredThreshold = null;
+
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const ctx = c.getContext('2d');
+
+  let frameCount = 0;
+  const interval = setInterval(()=>{
+    if(!videoEl || videoEl.readyState < 2){ return; }
+    try{
+      ctx.drawImage(videoEl, 0, 0, 64, 64);
+      const d = ctx.getImageData(0, 0, 64, 64).data;
+      let b = 0;
+      for(let i=0; i<d.length; i+=4) b += (d[i]+d[i+1]+d[i+2])/3;
+      const avg = Math.round(b / (d.length/4));
+      _calibrationSamples.push(avg);
+      frameCount++;
+    }catch(e){}
+
+    if(frameCount >= CALIBRATION_FRAMES){
+      clearInterval(interval);
+      // Sort and drop bottom 20% (handles momentary blinks/dark frames during calibration)
+      const sorted = [..._calibrationSamples].sort((a,b)=>a-b);
+      const trimmed = sorted.slice(Math.floor(sorted.length * 0.2));
+      _brightnessBaseline = Math.round(trimmed.reduce((s,v)=>s+v,0) / trimmed.length);
+      _coveredThreshold = Math.max(COVERED_RATIO_MIN, Math.round(_brightnessBaseline * COVERED_RATIO));
+      console.log(`[Calibration] Baseline: ${_brightnessBaseline} | Covered threshold: ${_coveredThreshold} | Samples: ${_calibrationSamples.join(',')}`);
+    }
+  }, 200); // sample every 200ms → 15 frames = 3 seconds
+}
+
+function getSampleBrightness(videoEl){
+  try{
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 64;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(videoEl, 0, 0, 64, 64);
+    const d = ctx.getImageData(0, 0, 64, 64).data;
+    let b = 0;
+    for(let i=0; i<d.length; i+=4) b += (d[i]+d[i+1]+d[i+2])/3;
+    return Math.round(b / (d.length/4));
+  }catch(e){ return null; }
+}
+
+function isCameraCovered(avg){
+  // If calibration not done yet, fall back to conservative fixed threshold
+  const threshold = _coveredThreshold !== null ? _coveredThreshold : 25;
+  return avg < threshold;
+}
+
 async function startCamera(){
   try{
     stream=await navigator.mediaDevices.getUserMedia({
       video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},
       audio:true
     });
-    document.getElementById('cam-video').srcObject=stream;
+    const vid = document.getElementById('cam-video');
+    vid.srcObject=stream;
     document.getElementById('cam-overlay').style.display='none';
     document.getElementById('cam-status').style.display='block';
     document.getElementById('cam-btn').style.display='none';
@@ -1299,6 +1359,13 @@ async function startCamera(){
     startSimpleCamCheck();
     startFaceDetection();
     startFullscreenEnforcement();
+    // ── Calibrate brightness threshold for this device ──
+    // Wait for video to be ready, then sample
+    vid.addEventListener('loadeddata', ()=>{
+      setTimeout(()=>calibrateBrightness(vid), 500);
+    }, {once:true});
+    // Fallback if loadeddata already fired
+    if(vid.readyState >= 2) setTimeout(()=>calibrateBrightness(vid), 500);
   }catch(e){
     alert('Camera access denied. Please allow camera access to continue.');
   }
