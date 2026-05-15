@@ -665,7 +665,7 @@ async function generateLink(){
     document.getElementById('link-box')?.appendChild(errDiv);
 
     const payload = btoa(unescape(encodeURIComponent(JSON.stringify({
-      role:config.role, jd:config.jd, questions:config.questions,
+      role:config.role, req:config.req, jd:config.jd, questions:config.questions,
       focus:config.focus, level:config.level, camera:config.camera,
       pasteDetect:config.pasteDetect, tabDetect:config.tabDetect,
       photoInterval:config.photoInterval
